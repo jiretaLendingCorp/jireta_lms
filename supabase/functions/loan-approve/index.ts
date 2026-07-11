@@ -1,4 +1,7 @@
 // supabase/functions/loan-approve/index.ts
+// FIX (016): Changed svc.from('profiles') → svc.from('users') to match the
+// table rename in migration 004. The original code queried profiles for
+// the lender's name/email which always returned 404 after the rename.
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireRole, getServiceClient, errorResponse } from '../_shared/auth.ts';
@@ -31,6 +34,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const termDaysNum = parseInt(String(term_days));
+    if (isNaN(termDaysNum) || termDaysNum <= 0 || termDaysNum > 730) {
+      return Response.json(
+        { error: 'term_days must be a positive integer ≤ 730' },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
+    // Fetch loan
     const { data: loan, error: fetchErr } = await svc
       .from('loans')
       .select('*')
@@ -43,94 +55,120 @@ Deno.serve(async (req: Request) => {
 
     if (!['pending', 'under_review'].includes(loan.status)) {
       return Response.json(
-        { error: 'Loan cannot be approved in its current status' },
+        { error: `Loan cannot be approved in its current status: ${loan.status}` },
         { status: 400, headers: corsHeaders },
       );
     }
 
-    const installment = calculateInstallment(loan.total_payable, term_days, payment_frequency);
+    // Recompute installment server-side from the approved term_days
+    // (HM/employee may choose different term_days than the tier default)
+    const installment = calculateInstallment(loan.total_payable, termDaysNum, payment_frequency);
+
+    const maturityDate = computeMaturityDate(termDaysNum);
 
     const { error: updateErr } = await svc
       .from('loans')
       .update({
-        status: 'approved',
-        term_days,
+        status:             'approved',
+        term_days:          termDaysNum,
         payment_frequency,
         installment_amount: installment,
-        approved_by_id: user.id,
-        approved_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        approved_by_id:     user.id,
+        approved_at:        new Date().toISOString(),
+        maturity_date:      maturityDate.toISOString(),
+        updated_at:         new Date().toISOString(),
       })
       .eq('id', loan_id);
 
     if (updateErr) throw updateErr;
 
+    // FIX: was svc.from('profiles') — renamed to users in migration 004
     const { data: lenderProfile } = await svc
-      .from('profiles')
-      .select('first_name, email, phone')
+      .from('users')
+      .select('first_name, last_name, email, phone')
       .eq('id', loan.lender_id)
       .single();
 
+    // In-app notification
     await svc.from('notifications').insert({
-      user_id: loan.lender_id,
-      title: 'Loan Approved!',
-      body: `Your loan of ₱${loan.principal_amount.toLocaleString()} has been approved.`,
-      category: 'loan_approved',
+      user_id:      loan.lender_id,
+      title:        'Loan Approved! 🎉',
+      body:         `Your loan of ₱${Number(loan.principal_amount).toLocaleString()} has been approved. `
+                  + `${payment_frequency.charAt(0).toUpperCase() + payment_frequency.slice(1)} installment: `
+                  + `₱${installment.toLocaleString()}`,
+      category:     'loan_approved',
       reference_id: loan_id,
     });
 
-    await pushToUser(svc, loan.lender_id, PushTemplates.loanApproved(loan.principal_amount), {
-      type: 'loan_approved',
-      loan_id,
-    });
-
-    if (lenderProfile?.phone) {
-      await sendLoanApproved(lenderProfile.phone, {
-        firstName: lenderProfile.first_name ?? 'Borrower',
-        amount: loan.principal_amount,
-        frequency: payment_frequency,
-      });
-    }
-
-    if (lenderProfile?.email) {
-      await emailLoanApproved({
-        to: lenderProfile.email,
-        firstName: lenderProfile.first_name ?? 'Borrower',
-        amount: loan.principal_amount,
-        totalPayable: loan.total_payable,
-        frequency: payment_frequency,
-        termDays: term_days,
-        installment,
-      });
-    }
-
+    // Audit log
     await svc.from('audit_logs').insert({
-      user_id: user.id,
-      action: 'approve',
-      table_name: 'loans',
-      record_id: loan_id,
-      new_values: { status: 'approved', term_days, payment_frequency },
+      user_id:     user.id,
+      action:      'approve',
+      table_name:  'loans',
+      record_id:   loan_id,
+      new_values: {
+        status:            'approved',
+        term_days:         termDaysNum,
+        payment_frequency,
+        installment_amount: installment,
+        approved_by:       `${user.first_name} ${user.last_name}`,
+      },
+      description: `Loan ₱${Number(loan.principal_amount).toLocaleString()} approved by `
+                 + `${user.first_name} ${user.last_name} — ${payment_frequency} ₱${installment.toLocaleString()} × ${termDaysNum}d`,
     });
 
-    return Response.json({ message: 'Loan approved' }, { headers: corsHeaders });
+    // Push / SMS / Email (non-blocking)
+    if (lenderProfile) {
+      const lenderName = `${lenderProfile.first_name} ${lenderProfile.last_name}`;
+      await Promise.allSettled([
+        pushToUser(svc, loan.lender_id, PushTemplates.loanApproved(lenderName, loan.principal_amount)),
+        lenderProfile.phone
+          ? sendLoanApproved(lenderProfile.phone, lenderName, loan.principal_amount)
+          : Promise.resolve(),
+        lenderProfile.email
+          ? emailLoanApproved(lenderProfile.email, lenderName, loan.principal_amount)
+          : Promise.resolve(),
+      ]);
+    }
+
+    return Response.json(
+      {
+        message:          'Loan approved successfully',
+        loan_id,
+        term_days:        termDaysNum,
+        payment_frequency,
+        installment_amount: installment,
+        maturity_date:    maturityDate.toISOString(),
+      },
+      { headers: corsHeaders },
+    );
   } catch (error) {
+    console.error('[loan-approve]', error);
     return errorResponse(error, corsHeaders);
   }
 });
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function calculateInstallment(
   totalPayable: number,
   termDays: number,
   frequency: string,
 ): number {
+  const daily   = Math.round((totalPayable / termDays) * 100) / 100;
+  const weekly  = Math.round((daily * 7) * 100) / 100;
+  const monthly = Math.round((totalPayable / Math.ceil(termDays / 30)) * 100) / 100;
+
   switch (frequency) {
-    case 'daily':
-      return Math.ceil((totalPayable / termDays) * 100) / 100;
-    case 'weekly':
-      return Math.ceil((totalPayable / Math.ceil(termDays / 7)) * 100) / 100;
-    case 'monthly':
-      return Math.ceil((totalPayable / Math.ceil(termDays / 30)) * 100) / 100;
-    default:
-      return totalPayable;
+    case 'daily':   return daily;
+    case 'weekly':  return weekly;
+    case 'monthly': return monthly;
+    default:        return monthly;
   }
+}
+
+function computeMaturityDate(termDays: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + termDays);
+  return d;
 }

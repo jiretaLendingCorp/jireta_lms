@@ -27,8 +27,7 @@ class RiderCollectScreen extends ConsumerStatefulWidget {
   const RiderCollectScreen({super.key, required this.id});
 
   @override
-  ConsumerState<RiderCollectScreen> createState() =>
-      _RiderCollectScreenState();
+  ConsumerState<RiderCollectScreen> createState() => _RiderCollectScreenState();
 }
 
 class _RiderCollectScreenState extends ConsumerState<RiderCollectScreen> {
@@ -45,8 +44,7 @@ class _RiderCollectScreenState extends ConsumerState<RiderCollectScreen> {
   void initState() {
     super.initState();
     // Pre-load the amount from the assignment provider cache
-    final assignment =
-        ref.read(riderAssignmentDetailProvider(widget.id)).value;
+    final assignment = ref.read(riderAssignmentDetailProvider(widget.id)).value;
     if (assignment != null) {
       _amountToCollect = assignment.amountToCollect;
     }
@@ -154,8 +152,7 @@ class _RiderCollectScreenState extends ConsumerState<RiderCollectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final assignmentAsync =
-        ref.watch(riderAssignmentDetailProvider(widget.id));
+    final assignmentAsync = ref.watch(riderAssignmentDetailProvider(widget.id));
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -167,8 +164,8 @@ class _RiderCollectScreenState extends ConsumerState<RiderCollectScreen> {
         ),
       ),
       body: assignmentAsync.when(
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: Colors.white)),
+        loading: () =>
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
         error: (e, _) => Center(
             child: Text('Error: $e',
                 style: const TextStyle(color: Colors.white70))),
@@ -246,14 +243,12 @@ class _RiderCollectScreenState extends ConsumerState<RiderCollectScreen> {
                           ),
                         ]),
                       ),
-                      if (assignment.collectionDate != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Due: ${assignment.collectionDate.toDisplayDate}',
-                          style: const TextStyle(
-                              color: Color(0xFF9CA3AF), fontSize: 12),
-                        ),
-                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Due: ${assignment.collectionDate.toDisplayDate}',
+                        style: const TextStyle(
+                            color: Color(0xFF9CA3AF), fontSize: 12),
+                      ),
                     ],
                   ),
                 ),

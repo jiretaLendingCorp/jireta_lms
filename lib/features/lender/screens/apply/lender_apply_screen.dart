@@ -22,6 +22,7 @@ import 'package:go_router/go_router.dart';
 import 'package:signature/signature.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/models/loan_term_tier_model.dart';
 import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/utils/validators.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -53,33 +54,50 @@ class LoanTerms {
   });
 
   // FIX: monthly is now computed for ALL tiers. For micro (40 days): 2 months.
-  static LoanTerms? from(double? amount) {
+  // When liveTiers is provided the rate/termDays come from the backend config;
+  // otherwise falls back to the hardcoded preview values.
+  static LoanTerms? from(double? amount, {List<LoanTermTierModel>? liveTiers}) {
     if (amount == null || amount < 3000 || amount > 500000) return null;
 
-    final int termDays;
-    if (amount < 10000) {
-      termDays = 40;
-    } else if (amount < 50000) {
-      termDays = 60;
-    } else if (amount < 100000) {
-      termDays = 80;
+    int termDays;
+    double rate;
+
+    if (liveTiers != null && liveTiers.isNotEmpty) {
+      try {
+        final tier = liveTiers.firstWhere(
+          (t) => amount >= t.minAmount && amount <= t.maxAmount,
+        );
+        termDays = tier.termDays;
+        rate = tier.interestRate;
+      } catch (_) {
+        return null;
+      }
     } else {
-      termDays = 120;
+      if (amount < 10000) {
+        termDays = 40;
+      } else if (amount < 50000) {
+        termDays = 60;
+      } else if (amount < 100000) {
+        termDays = 80;
+      } else {
+        termDays = 120;
+      }
+      rate = 0.20;
     }
 
-    final total    = _round(amount * 1.20);
-    final daily    = _round(total / termDays);
-    final weekly   = _round(daily * 7);
-    final months   = (termDays / 30).ceil(); // micro → 2, small → 2, medium → 3, large → 4
-    final monthly  = _round(total / months);
+    final total = _round(amount * (1 + rate));
+    final daily = _round(total / termDays);
+    final weekly = _round(daily * 7);
+    final months = (termDays / 30).ceil();
+    final monthly = _round(total / months);
 
     return LoanTerms(
-      principal:    amount,
+      principal: amount,
       totalPayable: total,
-      interest:     _round(amount * 0.20),
-      termDays:     termDays,
-      dailyPayment:   daily,
-      weeklyPayment:  weekly,
+      interest: _round(amount * rate),
+      termDays: termDays,
+      dailyPayment: daily,
+      weeklyPayment: weekly,
       monthlyPayment: monthly,
     );
   }
@@ -94,11 +112,15 @@ extension DisbursementMethodX on DisbursementMethod {
   String get value => name; // 'cash' | 'gcash' | 'office'
   String get label {
     switch (this) {
-      case DisbursementMethod.cash:   return 'Cash';
-      case DisbursementMethod.gcash:  return 'GCash';
-      case DisbursementMethod.office: return 'Office';
+      case DisbursementMethod.cash:
+        return 'Cash';
+      case DisbursementMethod.gcash:
+        return 'GCash';
+      case DisbursementMethod.office:
+        return 'Office';
     }
   }
+
   String get subtitle {
     switch (this) {
       case DisbursementMethod.cash:
@@ -109,11 +131,15 @@ extension DisbursementMethodX on DisbursementMethod {
         return 'Pick up cash at our office';
     }
   }
+
   IconData get icon {
     switch (this) {
-      case DisbursementMethod.cash:   return Icons.money_rounded;
-      case DisbursementMethod.gcash:  return Icons.phone_android_rounded;
-      case DisbursementMethod.office: return Icons.business_rounded;
+      case DisbursementMethod.cash:
+        return Icons.money_rounded;
+      case DisbursementMethod.gcash:
+        return Icons.phone_android_rounded;
+      case DisbursementMethod.office:
+        return Icons.business_rounded;
     }
   }
 }
@@ -133,15 +159,16 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
   bool _submitting = false;
 
   // Step 1 — Loan details
-  final _amountCtrl  = TextEditingController();
+  final _amountCtrl = TextEditingController();
   final _purposeCtrl = TextEditingController();
-  String _frequency  = 'monthly';
+  String _frequency = 'monthly';
   LoanTerms? _loanTerms;
-  bool _amountTouched = false; // track if user has typed anything
+  bool _amountTouched = false;
+  List<LoanTermTierModel> _liveTiers = const [];
 
   // Step 2 — Co-maker
-  final _cmFirstCtrl  = TextEditingController();
-  final _cmLastCtrl   = TextEditingController();
+  final _cmFirstCtrl = TextEditingController();
+  final _cmLastCtrl = TextEditingController();
   final _cmMiddleCtrl = TextEditingController();
   String _relationship = 'Spouse';
   final _sigCtrl = SignatureController(
@@ -150,26 +177,43 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
     exportBackgroundColor: Colors.transparent,
   );
   final _relationships = [
-    'Spouse', 'Parent', 'Sibling', 'Relative', 'Friend', 'Colleague', 'Neighbor'
+    'Spouse',
+    'Parent',
+    'Sibling',
+    'Relative',
+    'Friend',
+    'Colleague',
+    'Neighbor'
   ];
 
   // Step 4 — Disbursement
   DisbursementMethod _disbursementMethod = DisbursementMethod.cash;
-  final _gcashNameCtrl   = TextEditingController();
+  final _gcashNameCtrl = TextEditingController();
   final _gcashNumberCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _amountCtrl.addListener(_onAmountChanged);
+    _fetchLiveTiers();
+  }
+
+  Future<void> _fetchLiveTiers() async {
+    try {
+      final tiers = await ref.read(lenderLoanTermTiersProvider.future);
+      if (mounted) setState(() => _liveTiers = tiers);
+    } catch (_) {
+      // silently fall back to client-side LoanTerms.from()
+    }
   }
 
   void _onAmountChanged() {
-    final raw    = _amountCtrl.text.trim();
+    final raw = _amountCtrl.text.trim();
     final amount = double.tryParse(raw.replaceAll(',', ''));
-    final terms  = LoanTerms.from(amount);
+    final terms = LoanTerms.from(amount,
+        liveTiers: _liveTiers.isEmpty ? null : _liveTiers);
     setState(() {
-      _loanTerms    = terms;
+      _loanTerms = terms;
       _amountTouched = raw.isNotEmpty;
     });
   }
@@ -195,8 +239,7 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
     if (_step < _totalSteps - 1) {
       setState(() => _step++);
       _pageCtrl.animateToPage(_step,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut);
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
     }
   }
 
@@ -204,15 +247,14 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
     if (_step > 0) {
       setState(() => _step--);
       _pageCtrl.animateToPage(_step,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut);
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
     } else {
       context.go(RouteConstants.lenderHome);
     }
   }
 
   bool _validateStep1() {
-    final raw    = _amountCtrl.text.trim();
+    final raw = _amountCtrl.text.trim();
     final amount = double.tryParse(raw.replaceAll(',', ''));
     if (amount == null || amount < 3000) {
       setState(() => _amountTouched = true);
@@ -249,7 +291,8 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
         return false;
       }
       if (!RegExp(r'^09\d{9}$').hasMatch(_gcashNumberCtrl.text.trim())) {
-        context.showSnack('Enter a valid GCash number (09XXXXXXXXX)', isError: true);
+        context.showSnack('Enter a valid GCash number (09XXXXXXXXX)',
+            isError: true);
         return false;
       }
     }
@@ -265,7 +308,7 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
       sigBytes = await _sigCtrl.toPngBytes();
     }
 
-    final raw    = _amountCtrl.text.replaceAll(',', '').replaceAll('₱', '');
+    final raw = _amountCtrl.text.replaceAll(',', '').replaceAll('₱', '');
     final amount = double.parse(raw);
 
     // Upload signature first via Dio → /loan-apply/upload-signature
@@ -284,24 +327,24 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
     // Build disbursement_meta (sensitive fields sent to backend over TLS via Dio)
     final Map<String, dynamic> disbursementMeta = {};
     if (_disbursementMethod == DisbursementMethod.gcash) {
-      disbursementMeta['gcash_name']   = _gcashNameCtrl.text.trim();
+      disbursementMeta['gcash_name'] = _gcashNameCtrl.text.trim();
       disbursementMeta['gcash_number'] = _gcashNumberCtrl.text.trim();
     }
 
     // All computation happens in loan-apply/index.ts on the backend.
     // Flutter sends raw inputs; backend enforces business rules + tier resolution.
     final payload = {
-      'principal_amount':     amount,
-      'preferred_frequency':  _frequency,
-      'purpose':              _purposeCtrl.text.trim(),
+      'principal_amount': amount,
+      'preferred_frequency': _frequency,
+      'purpose': _purposeCtrl.text.trim(),
       // Disbursement (Step 4)
-      'disbursement_method':  _disbursementMethod.value,
-      'disbursement_meta':    disbursementMeta,
+      'disbursement_method': _disbursementMethod.value,
+      'disbursement_meta': disbursementMeta,
       // Co-maker
       'comaker': {
-        'first_name':   _cmFirstCtrl.text.trim(),
-        'last_name':    _cmLastCtrl.text.trim(),
-        'middle_name':  _cmMiddleCtrl.text.trim(),
+        'first_name': _cmFirstCtrl.text.trim(),
+        'last_name': _cmLastCtrl.text.trim(),
+        'middle_name': _cmMiddleCtrl.text.trim(),
         'relationship': _relationship,
         if (signatureUrl != null) 'signature_url': signatureUrl,
       },
@@ -341,41 +384,43 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
               children: [
                 // Step 1 — Loan details
                 _Step1(
-                  amountCtrl:     _amountCtrl,
-                  purposeCtrl:    _purposeCtrl,
-                  frequency:      _frequency,
-                  loanTerms:      _loanTerms,
-                  amountTouched:  _amountTouched,
+                  amountCtrl: _amountCtrl,
+                  purposeCtrl: _purposeCtrl,
+                  frequency: _frequency,
+                  loanTerms: _loanTerms,
+                  amountTouched: _amountTouched,
                   onFreqChanged: (v) => setState(() => _frequency = v),
-                  onNext:         _next,
+                  onNext: _next,
                 ),
                 // Step 2 — Co-maker
                 _Step2(
-                  firstCtrl:     _cmFirstCtrl,
-                  lastCtrl:      _cmLastCtrl,
-                  middleCtrl:    _cmMiddleCtrl,
-                  relationship:  _relationship,
+                  firstCtrl: _cmFirstCtrl,
+                  lastCtrl: _cmLastCtrl,
+                  middleCtrl: _cmMiddleCtrl,
+                  relationship: _relationship,
                   relationships: _relationships,
-                  sigCtrl:       _sigCtrl,
+                  sigCtrl: _sigCtrl,
                   onRelChanged: (v) => setState(() => _relationship = v),
-                  onNext:        _next,
+                  onNext: _next,
                 ),
                 // Step 3 — Review summary
                 _Step3(
-                  loanTerms:    _loanTerms,
-                  frequency:    _frequency,
-                  comakerName:  '${_cmFirstCtrl.text} ${_cmLastCtrl.text}'.trim(),
+                  loanTerms: _loanTerms,
+                  frequency: _frequency,
+                  comakerName:
+                      '${_cmFirstCtrl.text} ${_cmLastCtrl.text}'.trim(),
                   relationship: _relationship,
-                  onNext:       _next,
+                  onNext: _next,
                 ),
                 // Step 4 — Disbursement method (NEW)
                 _Step4(
-                  selectedMethod:  _disbursementMethod,
-                  gcashNameCtrl:   _gcashNameCtrl,
+                  selectedMethod: _disbursementMethod,
+                  gcashNameCtrl: _gcashNameCtrl,
                   gcashNumberCtrl: _gcashNumberCtrl,
-                  submitting:      _submitting,
-                  onMethodChanged: (m) => setState(() => _disbursementMethod = m),
-                  onSubmit:        _submit,
+                  submitting: _submitting,
+                  onMethodChanged: (m) =>
+                      setState(() => _disbursementMethod = m),
+                  onSubmit: _submit,
                 ),
               ],
             ),
@@ -398,7 +443,7 @@ class _StepIndicator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: List.generate(total, (i) {
-          final done   = i < current;
+          final done = i < current;
           final active = i == current;
           return Expanded(
             child: Row(
@@ -408,7 +453,9 @@ class _StepIndicator extends StatelessWidget {
                     duration: const Duration(milliseconds: 300),
                     height: 4,
                     decoration: BoxDecoration(
-                      color: done || active ? AppColors.lenderAccent : Colors.white12,
+                      color: done || active
+                          ? AppColors.lenderAccent
+                          : Colors.white12,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -427,7 +474,8 @@ class _StepIndicator extends StatelessWidget {
 class _PaymentTermsCard extends StatelessWidget {
   final LoanTerms terms;
   final String selectedFrequency;
-  const _PaymentTermsCard({required this.terms, required this.selectedFrequency});
+  const _PaymentTermsCard(
+      {required this.terms, required this.selectedFrequency});
 
   @override
   Widget build(BuildContext context) {
@@ -440,10 +488,14 @@ class _PaymentTermsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.calculate_rounded, color: AppColors.lenderAccent, size: 16),
+              const Icon(Icons.calculate_rounded,
+                  color: AppColors.lenderAccent, size: 16),
               const SizedBox(width: 8),
               const Text('Payment Breakdown',
-                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -453,38 +505,62 @@ class _PaymentTermsCard extends StatelessWidget {
                 ),
                 child: Text('${terms.termDays} days',
                     style: const TextStyle(
-                        color: AppColors.lenderAccent, fontSize: 11, fontWeight: FontWeight.w700)),
+                        color: AppColors.lenderAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _TermBox(label: 'Principal',       value: terms.principal.toPeso)),
+              Expanded(
+                  child: _TermBox(
+                      label: 'Principal', value: terms.principal.toPeso)),
               const SizedBox(width: 8),
-              Expanded(child: _TermBox(label: 'Interest (20%)', value: terms.interest.toPeso,     valueColor: AppColors.warning)),
+              Expanded(
+                  child: _TermBox(
+                      label: 'Interest (20%)',
+                      value: terms.interest.toPeso,
+                      valueColor: AppColors.warning)),
               const SizedBox(width: 8),
-              Expanded(child: _TermBox(label: 'Total Payable',  value: terms.totalPayable.toPeso, highlight: true)),
+              Expanded(
+                  child: _TermBox(
+                      label: 'Total Payable',
+                      value: terms.totalPayable.toPeso,
+                      highlight: true)),
             ],
           ),
           const SizedBox(height: 12),
           Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
           const SizedBox(height: 12),
           // FIX: All 3 frequencies always shown
-          _FreqRow(label: 'Daily',   value: terms.dailyPayment,   isSelected: selectedFrequency == 'daily'),
+          _FreqRow(
+              label: 'Daily',
+              value: terms.dailyPayment,
+              isSelected: selectedFrequency == 'daily'),
           const SizedBox(height: 8),
-          _FreqRow(label: 'Weekly',  value: terms.weeklyPayment,  isSelected: selectedFrequency == 'weekly'),
+          _FreqRow(
+              label: 'Weekly',
+              value: terms.weeklyPayment,
+              isSelected: selectedFrequency == 'weekly'),
           const SizedBox(height: 8),
-          _FreqRow(label: 'Monthly', value: terms.monthlyPayment, isSelected: selectedFrequency == 'monthly'),
+          _FreqRow(
+              label: 'Monthly',
+              value: terms.monthlyPayment,
+              isSelected: selectedFrequency == 'monthly'),
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Icons.info_outline_rounded, color: Colors.white38, size: 13),
+              const Icon(Icons.info_outline_rounded,
+                  color: Colors.white38, size: 13),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Deadline: ${terms.termDays} days from disbursement. Penalty of 20% applies after 30 days overdue.',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11),
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 11),
                 ),
               ),
             ],
@@ -500,7 +576,11 @@ class _TermBox extends StatelessWidget {
   final String value;
   final Color? valueColor;
   final bool highlight;
-  const _TermBox({required this.label, required this.value, this.valueColor, this.highlight = false});
+  const _TermBox(
+      {required this.label,
+      required this.value,
+      this.valueColor,
+      this.highlight = false});
 
   @override
   Widget build(BuildContext context) {
@@ -520,10 +600,15 @@ class _TermBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 10)),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55), fontSize: 10)),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(
-              color: valueColor ?? Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(value,
+              style: TextStyle(
+                  color: valueColor ?? Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -534,7 +619,8 @@ class _FreqRow extends StatelessWidget {
   final String label;
   final double value;
   final bool isSelected;
-  const _FreqRow({required this.label, required this.value, required this.isSelected});
+  const _FreqRow(
+      {required this.label, required this.value, required this.isSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -547,7 +633,9 @@ class _FreqRow extends StatelessWidget {
             : Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isSelected ? AppColors.lenderAccent.withValues(alpha: 0.5) : Colors.transparent,
+          color: isSelected
+              ? AppColors.lenderAccent.withValues(alpha: 0.5)
+              : Colors.transparent,
         ),
       ),
       child: Row(
@@ -556,13 +644,17 @@ class _FreqRow extends StatelessWidget {
             isSelected
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
-            color: isSelected ? AppColors.lenderAccent : Colors.white.withValues(alpha: 0.3),
+            color: isSelected
+                ? AppColors.lenderAccent
+                : Colors.white.withValues(alpha: 0.3),
             size: 14,
           ),
           const SizedBox(width: 8),
           Text(label,
               style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                color: isSelected
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.6),
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               )),
@@ -570,7 +662,9 @@ class _FreqRow extends StatelessWidget {
           Text(
             '${value.toPeso} / ${label.toLowerCase()}',
             style: TextStyle(
-              color: isSelected ? AppColors.lenderAccent : Colors.white.withValues(alpha: 0.7),
+              color: isSelected
+                  ? AppColors.lenderAccent
+                  : Colors.white.withValues(alpha: 0.7),
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             ),
@@ -604,7 +698,7 @@ class _Step1 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // FIX: Show red border when amount is typed but below ₱3,000 (or invalid)
-    final raw    = amountCtrl.text.trim();
+    final raw = amountCtrl.text.trim();
     final amount = double.tryParse(raw.replaceAll(',', ''));
     final amountError = amountTouched && (amount == null || amount < 3000)
         ? 'Minimum loan amount is ₱3,000'
@@ -616,10 +710,14 @@ class _Step1 extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Loan Details',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('₱3,000 – ₱500,000 · 20% flat interest',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
           const SizedBox(height: 24),
 
           // FIX: errorText makes field border turn red when below ₱3,000
@@ -630,7 +728,8 @@ class _Step1 extends StatelessWidget {
             isGlass: true,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            prefixIcon: const Icon(Icons.attach_money, size: 18, color: Colors.white54),
+            prefixIcon:
+                const Icon(Icons.attach_money, size: 18, color: Colors.white54),
             errorText: amountError,
           ),
           const SizedBox(height: 20),
@@ -641,19 +740,25 @@ class _Step1 extends StatelessWidget {
           ],
 
           const Text('Payment Frequency',
-              style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500)),
           const SizedBox(height: 10),
 
           // FIX: Always show Daily, Weekly, Monthly for all amounts
           Row(
             children: ['daily', 'weekly', 'monthly'].asMap().entries.map((e) {
-              final i        = e.key;
-              final f        = e.value;
+              final i = e.key;
+              final f = e.value;
               final selected = frequency == f;
-              final payLabel = loanTerms == null ? null
-                  : f == 'daily'   ? loanTerms!.dailyPayment.toPeso
-                  : f == 'weekly'  ? loanTerms!.weeklyPayment.toPeso
-                  :                  loanTerms!.monthlyPayment.toPeso;
+              final payLabel = loanTerms == null
+                  ? null
+                  : f == 'daily'
+                      ? loanTerms!.dailyPayment.toPeso
+                      : f == 'weekly'
+                          ? loanTerms!.weeklyPayment.toPeso
+                          : loanTerms!.monthlyPayment.toPeso;
 
               return Expanded(
                 child: GestureDetector(
@@ -680,7 +785,8 @@ class _Step1 extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: selected ? Colors.white : Colors.white60,
-                            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w400,
                             fontSize: 12,
                           ),
                         ),
@@ -689,7 +795,9 @@ class _Step1 extends StatelessWidget {
                           Text(payLabel,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: selected ? Colors.white.withValues(alpha: 0.85) : Colors.white38,
+                                color: selected
+                                    ? Colors.white.withValues(alpha: 0.85)
+                                    : Colors.white38,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                               )),
@@ -754,27 +862,42 @@ class _Step2 extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Co-maker Information',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('A co-maker guarantees your loan application',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
           const SizedBox(height: 24),
           Row(children: [
-            Expanded(child: AppTextField(
-                label: 'First Name', controller: firstCtrl, isGlass: true,
-                textCapitalization: TextCapitalization.words)),
+            Expanded(
+                child: AppTextField(
+                    label: 'First Name',
+                    controller: firstCtrl,
+                    isGlass: true,
+                    textCapitalization: TextCapitalization.words)),
             const SizedBox(width: 10),
-            Expanded(child: AppTextField(
-                label: 'Last Name', controller: lastCtrl, isGlass: true,
-                textCapitalization: TextCapitalization.words)),
+            Expanded(
+                child: AppTextField(
+                    label: 'Last Name',
+                    controller: lastCtrl,
+                    isGlass: true,
+                    textCapitalization: TextCapitalization.words)),
           ]),
           const SizedBox(height: 14),
           AppTextField(
-              label: 'Middle Name (optional)', controller: middleCtrl, isGlass: true,
+              label: 'Middle Name (optional)',
+              controller: middleCtrl,
+              isGlass: true,
               textCapitalization: TextCapitalization.words),
           const SizedBox(height: 14),
           const Text('Relationship',
-              style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -799,7 +922,10 @@ class _Step2 extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Text('Co-maker Signature',
-              style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
@@ -812,23 +938,29 @@ class _Step2 extends StatelessWidget {
               child: Column(
                 children: [
                   Signature(
-                    controller: sigCtrl, height: 150,
+                    controller: sigCtrl,
+                    height: 150,
                     backgroundColor: Colors.transparent,
                   ),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                      border: Border(
+                          top: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1))),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Draw signature above',
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.4),
+                                fontSize: 12)),
                         TextButton(
                           onPressed: () => sigCtrl.clear(),
                           child: const Text('Clear',
-                              style: TextStyle(color: AppColors.lenderAccent, fontSize: 12)),
+                              style: TextStyle(
+                                  color: AppColors.lenderAccent, fontSize: 12)),
                         ),
                       ],
                     ),
@@ -877,39 +1009,56 @@ class _Step3 extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Review Application',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('Confirm details before choosing disbursement',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
           const SizedBox(height: 24),
-
           if (terms != null) ...[
             GlassCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Loan Summary',
-                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 16),
-                  _InfoRow('Principal',       terms.principal.toPeso),
+                  _InfoRow('Principal', terms.principal.toPeso),
                   _InfoRow('Interest (20%)', terms.interest.toPeso),
-                  _InfoRow('Total Payable',  terms.totalPayable.toPeso, bold: true),
-                  _InfoRow('Term',           '${terms.termDays} days'),
+                  _InfoRow('Total Payable', terms.totalPayable.toPeso,
+                      bold: true),
+                  _InfoRow('Term', '${terms.termDays} days'),
                   _InfoRow('Payment Frequency', frequency.titleCase),
                   const SizedBox(height: 8),
-                  Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+                  Divider(
+                      color: Colors.white.withValues(alpha: 0.1), height: 1),
                   const SizedBox(height: 12),
                   // FIX: All 3 installment boxes always shown
                   Row(
                     children: [
-                      Expanded(child: _InstallmentBox(
-                          label: 'Daily',   value: terms.dailyPayment.toPeso,   isSelected: frequency == 'daily')),
+                      Expanded(
+                          child: _InstallmentBox(
+                              label: 'Daily',
+                              value: terms.dailyPayment.toPeso,
+                              isSelected: frequency == 'daily')),
                       const SizedBox(width: 8),
-                      Expanded(child: _InstallmentBox(
-                          label: 'Weekly',  value: terms.weeklyPayment.toPeso,  isSelected: frequency == 'weekly')),
+                      Expanded(
+                          child: _InstallmentBox(
+                              label: 'Weekly',
+                              value: terms.weeklyPayment.toPeso,
+                              isSelected: frequency == 'weekly')),
                       const SizedBox(width: 8),
-                      Expanded(child: _InstallmentBox(
-                          label: 'Monthly', value: terms.monthlyPayment.toPeso, isSelected: frequency == 'monthly')),
+                      Expanded(
+                          child: _InstallmentBox(
+                              label: 'Monthly',
+                              value: terms.monthlyPayment.toPeso,
+                              isSelected: frequency == 'monthly')),
                     ],
                   ),
                 ],
@@ -917,19 +1066,23 @@ class _Step3 extends StatelessWidget {
             ),
           ] else ...[
             const GlassCard(
-              child: Center(child: Text('Amount not set', style: TextStyle(color: Colors.white70))),
+              child: Center(
+                  child: Text('Amount not set',
+                      style: TextStyle(color: Colors.white70))),
             ),
           ],
-
           const SizedBox(height: 16),
           GlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Co-maker',
-                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 16),
-                _InfoRow('Name',         comakerName.isEmpty ? '—' : comakerName),
+                _InfoRow('Name', comakerName.isEmpty ? '—' : comakerName),
                 _InfoRow('Relationship', relationship),
                 const _InfoRow('Signature', 'Provided ✓'),
               ],
@@ -976,10 +1129,14 @@ class _Step4 extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('How do you want to receive the money?',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text('Choose your preferred disbursement method',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
           const SizedBox(height: 24),
 
           // Method cards
@@ -1015,7 +1172,9 @@ class _Step4 extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(m.icon,
-                            color: selected ? AppColors.lenderAccent : Colors.white60,
+                            color: selected
+                                ? AppColors.lenderAccent
+                                : Colors.white60,
                             size: 22),
                       ),
                       const SizedBox(width: 14),
@@ -1025,7 +1184,8 @@ class _Step4 extends StatelessWidget {
                           children: [
                             Text(m.label,
                                 style: TextStyle(
-                                  color: selected ? Colors.white : Colors.white70,
+                                  color:
+                                      selected ? Colors.white : Colors.white70,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 )),
@@ -1056,7 +1216,10 @@ class _Step4 extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('GCash Account Details',
-                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600)),
                   const SizedBox(height: 14),
                   AppTextField(
                     label: 'GCash Account Name',
@@ -1064,7 +1227,8 @@ class _Step4 extends StatelessWidget {
                     controller: gcashNameCtrl,
                     isGlass: true,
                     textCapitalization: TextCapitalization.words,
-                    prefixIcon: const Icon(Icons.person_rounded, size: 18, color: Colors.white54),
+                    prefixIcon: const Icon(Icons.person_rounded,
+                        size: 18, color: Colors.white54),
                   ),
                   const SizedBox(height: 12),
                   AppTextField(
@@ -1077,12 +1241,15 @@ class _Step4 extends StatelessWidget {
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(11),
                     ],
-                    prefixIcon: const Icon(Icons.phone_android_rounded, size: 18, color: Colors.white54),
+                    prefixIcon: const Icon(Icons.phone_android_rounded,
+                        size: 18, color: Colors.white54),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '⚡ When your loan is approved, funds will be automatically transferred to this GCash number.',
-                    style: TextStyle(color: AppColors.lenderAccent.withValues(alpha: 0.8), fontSize: 11),
+                    style: TextStyle(
+                        color: AppColors.lenderAccent.withValues(alpha: 0.8),
+                        fontSize: 11),
                   ),
                 ],
               ),
@@ -1094,12 +1261,16 @@ class _Step4 extends StatelessWidget {
             GlassCard(
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: AppColors.lenderAccent.withValues(alpha: 0.8), size: 18),
+                  Icon(Icons.info_outline_rounded,
+                      color: AppColors.lenderAccent.withValues(alpha: 0.8),
+                      size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'A rider will be assigned to deliver cash to your registered address when your loan is approved.',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 12),
                     ),
                   ),
                 ],
@@ -1112,12 +1283,16 @@ class _Step4 extends StatelessWidget {
             GlassCard(
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: AppColors.lenderAccent.withValues(alpha: 0.8), size: 18),
+                  Icon(Icons.info_outline_rounded,
+                      color: AppColors.lenderAccent.withValues(alpha: 0.8),
+                      size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'When your loan is approved, you can pick up the cash at our office. You will be notified of the schedule.',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 12),
                     ),
                   ),
                 ],
@@ -1131,13 +1306,16 @@ class _Step4 extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline_rounded, color: AppColors.warning, size: 18),
+                const Icon(Icons.info_outline_rounded,
+                    color: AppColors.warning, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'By submitting, you agree all information is accurate. A 20% flat interest applies. '
                     'Penalty of 20% of total payable activates after 30 days of non-payment.',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 12),
                   ),
                 ),
               ],
@@ -1163,7 +1341,8 @@ class _InstallmentBox extends StatelessWidget {
   final String label;
   final String value;
   final bool isSelected;
-  const _InstallmentBox({required this.label, required this.value, required this.isSelected});
+  const _InstallmentBox(
+      {required this.label, required this.value, required this.isSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -1182,7 +1361,9 @@ class _InstallmentBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 11)),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55), fontSize: 11)),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
@@ -1209,7 +1390,9 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
           Text(value,
               style: TextStyle(
                 color: Colors.white,

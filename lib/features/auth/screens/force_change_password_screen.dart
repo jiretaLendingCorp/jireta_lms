@@ -91,8 +91,7 @@ class _ForceChangePasswordScreenState
             'Your account requires a password change before you can continue.',
             style: isGlass
                 ? TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 14)
+                    color: Colors.white.withValues(alpha: 0.6), fontSize: 14)
                 : Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 12),
@@ -102,11 +101,11 @@ class _ForceChangePasswordScreenState
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: AppColors.warning.withValues(alpha: 0.30)),
+              border:
+                  Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
             ),
             child: Row(children: [
-              Icon(Icons.info_outline_rounded,
+              const Icon(Icons.info_outline_rounded,
                   color: AppColors.warning, size: 16),
               const SizedBox(width: 8),
               Expanded(
@@ -208,8 +207,7 @@ class _ForceChangePasswordScreenState
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
             child: Column(
               children: [
                 const LogoWidget(size: 48, showName: true),

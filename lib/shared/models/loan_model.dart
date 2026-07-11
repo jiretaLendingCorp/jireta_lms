@@ -1,4 +1,7 @@
 // lib/shared/models/loan_model.dart
+// FIX (016): Added tierLabel field — loan-apply Edge Function stores tier_label
+// in the loans table but the model was not parsing it, causing it to be null
+// everywhere in the UI.
 
 enum LoanStatus {
   pending,
@@ -125,6 +128,9 @@ class LoanModel {
   final String? rejectionReason;
   final String? approvedById;
   final String? disbursedById;
+  final String? disbursementMethod;
+  // FIX (016): was missing — loan-apply stores tier_label but model ignored it
+  final String? tierLabel;
   final DateTime createdAt;
   final DateTime? approvedAt;
   final DateTime? disbursedAt;
@@ -151,6 +157,8 @@ class LoanModel {
     this.rejectionReason,
     this.approvedById,
     this.disbursedById,
+    this.disbursementMethod,
+    this.tierLabel,
     required this.createdAt,
     this.approvedAt,
     this.disbursedAt,
@@ -172,6 +180,21 @@ class LoanModel {
       DateTime.now().isAfter(maturityDate!) &&
       status == LoanStatus.active;
 
+  String get tierDisplayLabel {
+    switch (tierLabel) {
+      case 'micro':
+        return 'Micro';
+      case 'small':
+        return 'Small';
+      case 'medium':
+        return 'Medium';
+      case 'large':
+        return 'Large';
+      default:
+        return tierLabel ?? '—';
+    }
+  }
+
   factory LoanModel.fromJson(Map<String, dynamic> json) => LoanModel(
         id: json['id'] as String,
         lenderId: json['lender_id'] as String,
@@ -179,23 +202,21 @@ class LoanModel {
         principalAmount: (json['principal_amount'] as num).toDouble(),
         interestAmount: (json['interest_amount'] as num).toDouble(),
         totalPayable: (json['total_payable'] as num).toDouble(),
-        outstandingBalance:
-            (json['outstanding_balance'] as num).toDouble(),
-        penaltyAmount:
-            (json['penalty_amount'] as num?)?.toDouble() ?? 0,
+        outstandingBalance: (json['outstanding_balance'] as num).toDouble(),
+        penaltyAmount: (json['penalty_amount'] as num?)?.toDouble() ?? 0,
         status: LoanStatusX.fromString(json['status'] as String?),
         paymentFrequency: json['payment_frequency'] != null
-            ? PaymentFrequencyX.fromString(
-                json['payment_frequency'] as String?,
-              )
+            ? PaymentFrequencyX.fromString(json['payment_frequency'] as String?)
             : null,
         termDays: json['term_days'] as int?,
-        installmentAmount:
-            (json['installment_amount'] as num?)?.toDouble(),
+        installmentAmount: (json['installment_amount'] as num?)?.toDouble(),
         purpose: json['purpose'] as String?,
         rejectionReason: json['rejection_reason'] as String?,
         approvedById: json['approved_by_id'] as String?,
         disbursedById: json['disbursed_by_id'] as String?,
+        disbursementMethod: json['disbursement_method'] as String?,
+        // FIX (016): parse tier_label from JSON
+        tierLabel: json['tier_label'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
         approvedAt: json['approved_at'] != null
             ? DateTime.parse(json['approved_at'] as String)
@@ -232,10 +253,9 @@ class ComakerInfo {
     this.signatureUrl,
   });
 
-  String get fullName =>
-      [firstName, middleName, lastName]
-          .where((p) => p != null && p.isNotEmpty)
-          .join(' ');
+  String get fullName => [firstName, middleName, lastName]
+      .where((p) => p != null && p.isNotEmpty)
+      .join(' ');
 
   factory ComakerInfo.fromJson(Map<String, dynamic> json) => ComakerInfo(
         firstName: json['first_name'] as String,

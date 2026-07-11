@@ -2,6 +2,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/hm_repository.dart';
+import '../../../core/providers/realtime_providers.dart';
 import '../../../shared/models/loan_model.dart';
 import '../../../shared/models/app_user.dart';
 import '../../../shared/models/payment_model.dart';
@@ -9,11 +10,14 @@ import '../../../shared/models/kyc_model.dart';
 import '../../../shared/models/assignment_model.dart';
 import '../../../shared/models/audit_log_model.dart';
 import '../../../shared/models/notification_model.dart';
+import '../../../shared/models/loan_term_tier_model.dart';
+import '../../../shared/models/report_model.dart';
 
 final hmRepositoryProvider = Provider<HmRepository>((ref) => HmRepository());
 
 final hmLoansProvider = FutureProvider.family<List<LoanModel>, String?>(
   (ref, status) async {
+    ref.watch(realtimeLoansStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res = await repo.listLoans(status: status == 'all' ? null : status);
     if (res.success) return res.data!;
@@ -23,6 +27,7 @@ final hmLoansProvider = FutureProvider.family<List<LoanModel>, String?>(
 
 final hmLoanDetailProvider = FutureProvider.family<LoanModel, String>(
   (ref, id) async {
+    ref.watch(realtimeLoansStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res = await repo.getLoan(id);
     if (res.success) return res.data!;
@@ -93,12 +98,16 @@ class HmUsersNotifier extends StateNotifier<AsyncValue<void>> {
       'last_name': lastName,
       'email': email,
       if (phone != null && phone.isNotEmpty) 'phone': phone,
-      if (middleName != null && middleName.isNotEmpty) 'middle_name': middleName,
+      if (middleName != null && middleName.isNotEmpty)
+        'middle_name': middleName,
       if (address != null && address.isNotEmpty) 'address': address,
-      if (driverLicense != null && driverLicense.isNotEmpty) 'driver_license': driverLicense,
-      if (vehicleInfo != null && vehicleInfo.isNotEmpty) 'vehicle_info': vehicleInfo,
+      if (driverLicense != null && driverLicense.isNotEmpty)
+        'driver_license': driverLicense,
+      if (vehicleInfo != null && vehicleInfo.isNotEmpty)
+        'vehicle_info': vehicleInfo,
       if (employer != null && employer.isNotEmpty) 'employer': employer,
-      if (monthlyIncome != null && monthlyIncome.isNotEmpty) 'monthly_income': monthlyIncome,
+      if (monthlyIncome != null && monthlyIncome.isNotEmpty)
+        'monthly_income': monthlyIncome,
       if (birthday != null && birthday.isNotEmpty) 'birthday': birthday,
     });
 
@@ -108,7 +117,8 @@ class HmUsersNotifier extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
-    state = AsyncValue.error(res.error ?? 'Failed to create user', StackTrace.current);
+    state = AsyncValue.error(
+        res.error ?? 'Failed to create user', StackTrace.current);
     return res.error ?? 'Failed to create user';
   }
 
@@ -149,6 +159,7 @@ final hmUserDetailProvider = FutureProvider.family<AppUser, String>(
 
 final hmPaymentsProvider = FutureProvider.family<List<PaymentModel>, String?>(
   (ref, status) async {
+    ref.watch(realtimePaymentsStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res =
         await repo.listPayments(status: status == 'all' ? null : status);
@@ -159,6 +170,7 @@ final hmPaymentsProvider = FutureProvider.family<List<PaymentModel>, String?>(
 
 final hmKycProvider = FutureProvider.family<List<KycModel>, String?>(
   (ref, status) async {
+    ref.watch(realtimeKycStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res = await repo.listKyc(status: status == 'all' ? null : status);
     if (res.success) return res.data!;
@@ -169,6 +181,7 @@ final hmKycProvider = FutureProvider.family<List<KycModel>, String?>(
 final hmAssignmentsProvider =
     FutureProvider.family<List<AssignmentModel>, String?>(
   (ref, status) async {
+    ref.watch(realtimeAssignmentsStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res =
         await repo.listAssignments(status: status == 'all' ? null : status);
@@ -182,7 +195,6 @@ final hmRidersProvider = FutureProvider<List<AppUser>>((ref) async {
   if (res.success) return res.data!;
   throw Exception(res.error);
 });
-
 
 final hmAnalyticsKpiProvider =
     FutureProvider<Map<String, dynamic>>((ref) async {
@@ -235,8 +247,48 @@ final hmSystemSettingsProvider =
 
 final hmNotificationsProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
+  ref.watch(realtimeNotificationsStreamProvider);
   final repo = ref.read(hmRepositoryProvider);
   final res = await repo.listNotifications();
+  if (res.success) return res.data!;
+  throw Exception(res.error);
+});
+
+/// All loan term tiers; auto-refreshes on any tier table change via Realtime.
+final hmTiersProvider = FutureProvider<List<LoanTermTierModel>>((ref) async {
+  ref.watch(realtimeTiersStreamProvider);
+  final repo = ref.read(hmRepositoryProvider);
+  final res = await repo.listSystemTiers();
+  if (res.success) return res.data!;
+  throw Exception(res.error);
+});
+
+class ReportFilter {
+  final String type;
+  final String? dateFrom;
+  final String? dateTo;
+  const ReportFilter({required this.type, this.dateFrom, this.dateTo});
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReportFilter &&
+      other.type == type &&
+      other.dateFrom == dateFrom &&
+      other.dateTo == dateTo;
+
+  @override
+  int get hashCode => Object.hash(type, dateFrom, dateTo);
+}
+
+/// On-demand typed report provider. Pass [ReportFilter] to trigger generation.
+final hmGenerateReportProvider =
+    FutureProvider.family<ReportModel, ReportFilter>((ref, filter) async {
+  final repo = ref.read(hmRepositoryProvider);
+  final res = await repo.generateReport(
+    type: filter.type,
+    dateFrom: filter.dateFrom,
+    dateTo: filter.dateTo,
+  );
   if (res.success) return res.data!;
   throw Exception(res.error);
 });
@@ -247,7 +299,7 @@ final hmNotificationsProvider =
 final hmActiveLendersProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.read(hmRepositoryProvider);
-  final res  = await repo.getActiveLenders();
+  final res = await repo.getActiveLenders();
   if (res.success) return (res.data as List).cast<Map<String, dynamic>>();
   throw Exception(res.error);
 });
@@ -257,7 +309,7 @@ final hmActiveLendersProvider =
 final hmKycPendingLendersProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final repo = ref.read(hmRepositoryProvider);
-  final res  = await repo.getKycPendingLenders();
+  final res = await repo.getKycPendingLenders();
   if (res.success) return (res.data as List).cast<Map<String, dynamic>>();
   throw Exception(res.error);
 });

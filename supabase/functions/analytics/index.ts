@@ -225,8 +225,114 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // GET /report — generates a typed report for HM/employee
+    if (path === '/report' && req.method === 'GET') {
+      await requireRole(req, ['head_manager', 'employee']);
+      const params = url.searchParams;
+      const type     = params.get('type') ?? 'loans';
+      const dateFrom = params.get('date_from');
+      const dateTo   = params.get('date_to');
+
+      const fromTs = dateFrom ? new Date(dateFrom).toISOString() : null;
+      const toTs   = dateTo
+        ? new Date(new Date(dateTo).setHours(23, 59, 59, 999)).toISOString()
+        : null;
+
+      let reportData: Record<string, unknown> = {};
+
+      if (type === 'loans') {
+        let q = svc.from('loans').select('id, status, principal_amount, created_at', { count: 'exact' });
+        if (fromTs) q = q.gte('created_at', fromTs);
+        if (toTs)   q = q.lte('created_at', toTs);
+        const { data, count } = await q;
+        const disbursed = (data ?? []).reduce((s: number, l: Record<string, number>) => s + (l.principal_amount ?? 0), 0);
+        reportData = {
+          total_loans: count ?? 0,
+          total_disbursed: disbursed,
+          active: (data ?? []).filter((l: Record<string, string>) => l.status === 'active').length,
+          closed: (data ?? []).filter((l: Record<string, string>) => l.status === 'closed').length,
+          pending: (data ?? []).filter((l: Record<string, string>) => l.status === 'pending').length,
+          overdue: (data ?? []).filter((l: Record<string, string>) => l.status === 'overdue').length,
+        };
+      } else if (type === 'payments') {
+        let q = svc.from('payments').select('id, status, amount, created_at', { count: 'exact' });
+        if (fromTs) q = q.gte('created_at', fromTs);
+        if (toTs)   q = q.lte('created_at', toTs);
+        const { data, count } = await q;
+        const verified = (data ?? []).filter((p: Record<string, string>) => p.status === 'verified');
+        const collected = verified.reduce((s: number, p: Record<string, number>) => s + (p.amount ?? 0), 0);
+        reportData = {
+          total_payments: count ?? 0,
+          total_collected: collected,
+          verified: verified.length,
+          pending: (data ?? []).filter((p: Record<string, string>) => p.status === 'pending').length,
+          rejected: (data ?? []).filter((p: Record<string, string>) => p.status === 'rejected').length,
+        };
+      } else if (type === 'users') {
+        const [lenders, riders, employees] = await Promise.all([
+          svc.from('users').select('id', { count: 'exact' }).eq('role', 'lender'),
+          svc.from('users').select('id', { count: 'exact' }).eq('role', 'rider'),
+          svc.from('users').select('id', { count: 'exact' }).eq('role', 'employee'),
+        ]);
+        reportData = {
+          total_lenders: lenders.count ?? 0,
+          total_riders: riders.count ?? 0,
+          total_employees: employees.count ?? 0,
+          total_users: (lenders.count ?? 0) + (riders.count ?? 0) + (employees.count ?? 0),
+        };
+      } else if (type === 'collections') {
+        let q = svc.from('payments').select('amount, status, created_at');
+        if (fromTs) q = q.gte('created_at', fromTs);
+        if (toTs)   q = q.lte('created_at', toTs);
+        const { data } = await q;
+        const verified = (data ?? []).filter((p: Record<string, string>) => p.status === 'verified');
+        const collected = verified.reduce((s: number, p: Record<string, number>) => s + (p.amount ?? 0), 0);
+        const expected_q = await svc.from('loans').select('outstanding_balance').eq('status', 'active');
+        const expected = (expected_q.data ?? []).reduce((s: number, l: Record<string, number>) => s + (l.outstanding_balance ?? 0), 0);
+        reportData = {
+          total_collected: collected,
+          total_expected: expected,
+          collection_count: verified.length,
+          collection_rate: expected > 0 ? ((collected / expected) * 100).toFixed(2) : '0.00',
+        };
+      } else if (type === 'overdue') {
+        const now = new Date();
+        const { data } = await svc.from('loans')
+          .select('id, principal_amount, outstanding_balance, maturity_date')
+          .eq('status', 'active')
+          .lt('maturity_date', now.toISOString());
+        const bucket30  = (data ?? []).filter((l: Record<string, string>) => daysDiff(now, l.maturity_date) <= 30);
+        const bucket60  = (data ?? []).filter((l: Record<string, string>) => { const d = daysDiff(now, l.maturity_date); return d > 30 && d <= 60; });
+        const bucket90  = (data ?? []).filter((l: Record<string, string>) => { const d = daysDiff(now, l.maturity_date); return d > 60 && d <= 90; });
+        const bucketOvr = (data ?? []).filter((l: Record<string, string>) => daysDiff(now, l.maturity_date) > 90);
+        reportData = {
+          total_overdue: (data ?? []).length,
+          bucket_1_30:   bucket30.length,
+          bucket_31_60:  bucket60.length,
+          bucket_61_90:  bucket90.length,
+          bucket_over_90: bucketOvr.length,
+          overdue_balance: (data ?? []).reduce((s: number, l: Record<string, number>) => s + (l.outstanding_balance ?? 0), 0),
+        };
+      }
+
+      return Response.json(
+        {
+          report_type: type,
+          date_from: dateFrom,
+          date_to: dateTo,
+          generated_at: new Date().toISOString(),
+          data: reportData,
+        },
+        { headers: corsHeaders },
+      );
+    }
+
     return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
   } catch (error) {
     return errorResponse(error, corsHeaders);
   }
 });
+
+function daysDiff(now: Date, isoDate: string): number {
+  return Math.floor((now.getTime() - new Date(isoDate).getTime()) / (1000 * 60 * 60 * 24));
+}

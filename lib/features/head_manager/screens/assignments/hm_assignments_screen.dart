@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../shared/models/app_user.dart';
 import '../../../../shared/models/assignment_model.dart';
 import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -35,7 +34,12 @@ class _HmAssignmentsScreenState extends ConsumerState<HmAssignmentsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
   final _statuses = [
-    'all', 'pending', 'in_progress', 'completed', 'failed', 'cancelled',
+    'all',
+    'pending',
+    'in_progress',
+    'completed',
+    'failed',
+    'cancelled',
   ];
 
   @override
@@ -58,11 +62,12 @@ class _HmAssignmentsScreenState extends ConsumerState<HmAssignmentsScreen>
 
     if (!mounted) return;
 
+    final container = ProviderScope.containerOf(context);
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogCtx) => ProviderScope(
-        parent: ProviderScope.containerOf(context),
+      builder: (dialogCtx) => UncontrolledProviderScope(
+        container: container,
         child: _HmCreateAssignmentDialog(
           onSubmit: (payload) async {
             final res =
@@ -73,7 +78,7 @@ class _HmAssignmentsScreenState extends ConsumerState<HmAssignmentsScreen>
       ),
     );
 
-    if (ok == true && mounted) {
+    if (ok == true && context.mounted) {
       context.showSnack('Assignment created successfully');
       ref.invalidate(hmAssignmentsProvider(null));
       for (final s in _statuses) {
@@ -123,9 +128,7 @@ class _HmAssignmentsScreenState extends ConsumerState<HmAssignmentsScreen>
         Expanded(
           child: TabBarView(
             controller: _tabs,
-            children: _statuses
-                .map((s) => _AssignmentList(status: s))
-                .toList(),
+            children: _statuses.map((s) => _AssignmentList(status: s)).toList(),
           ),
         ),
       ],
@@ -147,7 +150,7 @@ class _HmCreateAssignmentDialog extends ConsumerStatefulWidget {
 class _HmCreateAssignmentDialogState
     extends ConsumerState<_HmCreateAssignmentDialog> {
   final _amountCtrl = TextEditingController();
-  final _notesCtrl  = TextEditingController();
+  final _notesCtrl = TextEditingController();
 
   String? _riderId;
   String _type = 'collection';
@@ -185,7 +188,8 @@ class _HmCreateAssignmentDialogState
     } else {
       // credit_investigation
       if (_selectedKyc == null) {
-        setState(() => _errorMsg = 'Please select a lender for credit investigation');
+        setState(() =>
+            _errorMsg = 'Please select a lender for credit investigation');
         return;
       }
     }
@@ -195,23 +199,26 @@ class _HmCreateAssignmentDialogState
       return;
     }
 
-    setState(() { _loading = true; _errorMsg = null; });
+    setState(() {
+      _loading = true;
+      _errorMsg = null;
+    });
 
     final payload = <String, dynamic>{
-      'rider_id':        _riderId!,
+      'rider_id': _riderId!,
       'assignment_type': _type,
       'collection_date': _date!.toApiDate,
       if (_notesCtrl.text.trim().isNotEmpty) 'notes': _notesCtrl.text.trim(),
     };
 
     if (_type == 'collection') {
-      payload['loan_id']           = _selectedLoan!['loan_id'];
-      payload['lender_id']         = _selectedLoan!['lender_id'];
+      payload['loan_id'] = _selectedLoan!['loan_id'];
+      payload['lender_id'] = _selectedLoan!['lender_id'];
       payload['amount_to_collect'] =
           double.tryParse(_amountCtrl.text.trim()) ?? 0;
     } else {
       // credit_investigation — rider will document-verify the lender
-      payload['kyc_id']    = _selectedKyc!['kyc_id'];
+      payload['kyc_id'] = _selectedKyc!['kyc_id'];
       payload['lender_id'] = _selectedKyc!['lender_id'];
       // amount not relevant for CI
       payload['amount_to_collect'] = 0;
@@ -223,15 +230,16 @@ class _HmCreateAssignmentDialogState
     if (success) {
       Navigator.pop(context, true);
     } else {
-      setState(() => _errorMsg = 'Failed to create assignment. Please try again.');
+      setState(
+          () => _errorMsg = 'Failed to create assignment. Please try again.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final ridersAsync        = ref.watch(hmRidersProvider);
+    final ridersAsync = ref.watch(hmRidersProvider);
     final activeLendersAsync = ref.watch(hmActiveLendersProvider);
-    final kycPendingAsync    = ref.watch(hmKycPendingLendersProvider);
+    final kycPendingAsync = ref.watch(hmKycPendingLendersProvider);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -272,11 +280,13 @@ class _HmCreateAssignmentDialogState
 
                 // Assignment type toggle
                 const Text('Assignment Type',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    style:
+                        TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: _TypeBtn(
+                    Expanded(
+                        child: _TypeBtn(
                       label: 'Collection',
                       icon: Icons.payments_rounded,
                       selected: _type == 'collection',
@@ -286,7 +296,8 @@ class _HmCreateAssignmentDialogState
                       }),
                     )),
                     const SizedBox(width: 10),
-                    Expanded(child: _TypeBtn(
+                    Expanded(
+                        child: _TypeBtn(
                       label: 'Credit Investigation',
                       icon: Icons.search_rounded,
                       selected: _type == 'credit_investigation',
@@ -301,7 +312,8 @@ class _HmCreateAssignmentDialogState
 
                 // Rider dropdown
                 const Text('Assign Rider',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    style:
+                        TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 ridersAsync.when(
                   loading: () => const LinearProgressIndicator(),
@@ -338,11 +350,12 @@ class _HmCreateAssignmentDialogState
                 // FIX #13: Lender name dropdown (collection) or KYC pending (CI)
                 if (_type == 'collection') ...[
                   const Text('Select Lender / Loan',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text('Shows lenders with active or pending loans',
-                      style: TextStyle(
-                          color: Colors.grey.shade500, fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 11)),
                   const SizedBox(height: 8),
                   activeLendersAsync.when(
                     loading: () => const LinearProgressIndicator(),
@@ -355,7 +368,7 @@ class _HmCreateAssignmentDialogState
                       }
                       final validId = lenders.any(
                               (l) => l['loan_id'] == _selectedLoan?['loan_id'])
-                          ? _selectedLoan?['loan_id'] as String?
+                          ? (_selectedLoan?['loan_id'] as String?)
                           : null;
                       return DropdownButtonFormField<String>(
                         value: validId,
@@ -391,15 +404,18 @@ class _HmCreateAssignmentDialogState
                     label: 'Amount to Collect (₱)',
                     hint: '0.00',
                     controller: _amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ] else ...[
                   // Credit Investigation — lender picker (KYC pending)
                   const Text('Select Lender for Credit Investigation',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text('Shows lenders with pending KYC submissions',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 11)),
                   const SizedBox(height: 8),
                   kycPendingAsync.when(
                     loading: () => const LinearProgressIndicator(),
@@ -412,7 +428,7 @@ class _HmCreateAssignmentDialogState
                       }
                       final validKycId = lenders.any(
                               (l) => l['kyc_id'] == _selectedKyc?['kyc_id'])
-                          ? _selectedKyc?['kyc_id'] as String?
+                          ? (_selectedKyc?['kyc_id'] as String?)
                           : null;
                       return DropdownButtonFormField<String>(
                         value: validKycId,
@@ -435,7 +451,8 @@ class _HmCreateAssignmentDialogState
                             .toList(),
                         onChanged: (v) {
                           final entry = lenders.firstWhere(
-                              (l) => l['kyc_id'] == v, orElse: () => {});
+                              (l) => l['kyc_id'] == v,
+                              orElse: () => {});
                           setState(() => _selectedKyc = entry);
                         },
                       );
@@ -447,19 +464,22 @@ class _HmCreateAssignmentDialogState
                     decoration: BoxDecoration(
                       color: AppColors.info.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: AppColors.info.withValues(alpha: 0.3)),
                     ),
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline_rounded, color: AppColors.info, size: 16),
+                        Icon(Icons.info_outline_rounded,
+                            color: AppColors.info, size: 16),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'The rider will visit the lender, verify documents, '
                             'and submit a credit investigation report. Once submitted, '
                             'head manager and employees can approve or reject the KYC.',
-                            style: TextStyle(fontSize: 12, color: AppColors.info),
+                            style:
+                                TextStyle(fontSize: 12, color: AppColors.info),
                           ),
                         ),
                       ],
@@ -473,7 +493,8 @@ class _HmCreateAssignmentDialogState
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _date ?? DateTime.now().add(const Duration(days: 1)),
+                      initialDate:
+                          _date ?? DateTime.now().add(const Duration(days: 1)),
                       firstDate: DateTime.now(),
                       lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
@@ -481,12 +502,15 @@ class _HmCreateAssignmentDialogState
                   },
                   child: AbsorbPointer(
                     child: AppTextField(
-                      label: _type == 'collection' ? 'Collection Date' : 'Investigation Date',
+                      label: _type == 'collection'
+                          ? 'Collection Date'
+                          : 'Investigation Date',
                       hint: 'Tap to select date',
-                      controller: TextEditingController(
-                          text: _date?.toApiDate ?? ''),
+                      controller:
+                          TextEditingController(text: _date?.toApiDate ?? ''),
                       readOnly: true,
-                      prefixIcon: const Icon(Icons.calendar_today_rounded, size: 16),
+                      prefixIcon:
+                          const Icon(Icons.calendar_today_rounded, size: 16),
                     ),
                   ),
                 ),
@@ -504,7 +528,8 @@ class _HmCreateAssignmentDialogState
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(_errorMsg!,
-                        style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                        style: const TextStyle(
+                            color: AppColors.error, fontSize: 13)),
                   ),
 
                 Row(
@@ -538,8 +563,11 @@ class _TypeBtn extends StatelessWidget {
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
-  const _TypeBtn({required this.label, required this.icon,
-      required this.selected, required this.onTap});
+  const _TypeBtn(
+      {required this.label,
+      required this.icon,
+      required this.selected,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -563,8 +591,7 @@ class _TypeBtn extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon,
-                color: selected ? Colors.white : AppColors.accent,
-                size: 20),
+                color: selected ? Colors.white : AppColors.accent, size: 20),
             const SizedBox(height: 4),
             Text(label,
                 textAlign: TextAlign.center,
@@ -595,19 +622,19 @@ class _AssignmentList extends ConsumerWidget {
       data: (assignments) {
         if (assignments.isEmpty) {
           return const EmptyState(
-              icon: Icons.assignment_outlined,
-              title: 'No assignments found');
+              icon: Icons.assignment_outlined, title: 'No assignments found');
         }
         return ListView.separated(
           padding: const EdgeInsets.all(24),
           itemCount: assignments.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (_, i) {
-            final a    = assignments[i];
+            final a = assignments[i];
             final isCi = a.isCreditInvestigation;
             return Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Row(
                   children: [
                     Container(
@@ -630,17 +657,19 @@ class _AssignmentList extends ConsumerWidget {
                         children: [
                           Row(children: [
                             Expanded(
-                              child: Text(
-                                  a.lenderName ?? 'Unknown Lender',
+                              child: Text(a.lenderName ?? 'Unknown Lender',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w600, fontSize: 14)),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
                             ),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: (isCi ? AppColors.info : AppColors.riderAccent)
+                                color: (isCi
+                                        ? AppColors.info
+                                        : AppColors.riderAccent)
                                     .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -649,7 +678,9 @@ class _AssignmentList extends ConsumerWidget {
                                 style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
-                                    color: isCi ? AppColors.info : AppColors.riderAccent),
+                                    color: isCi
+                                        ? AppColors.info
+                                        : AppColors.riderAccent),
                               ),
                             ),
                           ]),
@@ -669,7 +700,8 @@ class _AssignmentList extends ConsumerWidget {
                               fontWeight: FontWeight.w700, fontSize: 14),
                         ),
                         const SizedBox(height: 4),
-                        StatusChip.assignmentStatus(a.status.value, small: true),
+                        StatusChip.assignmentStatus(a.status.value,
+                            small: true),
                       ],
                     ),
                   ],

@@ -8,6 +8,8 @@ import '../../../shared/models/kyc_model.dart';
 import '../../../shared/models/assignment_model.dart';
 import '../../../shared/models/app_user.dart';
 import '../../../shared/models/notification_model.dart';
+import '../../../shared/models/loan_term_tier_model.dart';
+import '../../../shared/models/report_model.dart';
 
 class EmpUsersNotifier extends StateNotifier<AsyncValue<void>> {
   EmpUsersNotifier(this._ref) : super(const AsyncValue.data(null));
@@ -124,3 +126,16 @@ final empUsersListProvider = FutureProvider.family<List<AppUser>, String>(
     throw Exception(res.error);
   },
 );
+
+final empLoanTermTiersProvider =
+    FutureProvider<List<LoanTermTierModel>>((ref) async {
+  final res = await ref.read(empRepositoryProvider).getLoanTermTiers();
+  if (res.success) return res.data!;
+  throw Exception(res.error);
+});
+
+final empReportProvider = FutureProvider<ReportResult>((ref) async {
+  final res = await ref.read(empRepositoryProvider).getReport();
+  if (res.success) return res.data!;
+  throw Exception(res.error);
+});

@@ -6,6 +6,7 @@ import '../../../shared/models/loan_model.dart';
 import '../../../shared/models/payment_model.dart';
 import '../../../shared/models/kyc_model.dart';
 import '../../../shared/models/notification_model.dart';
+import '../../../shared/models/loan_term_tier_model.dart';
 
 final lenderRepositoryProvider =
     Provider<LenderRepository>((ref) => LenderRepository());
@@ -27,8 +28,7 @@ final lenderLoanDetailProvider = FutureProvider.family<LoanModel, String>(
 final lenderScheduleProvider =
     FutureProvider.family<List<LoanSchedule>, String>(
   (ref, loanId) async {
-    final res =
-        await ref.read(lenderRepositoryProvider).getSchedule(loanId);
+    final res = await ref.read(lenderRepositoryProvider).getSchedule(loanId);
     if (res.success) return res.data!;
     throw Exception(res.error);
   },
@@ -60,8 +60,7 @@ final lenderMyKycProvider = FutureProvider<KycModel?>((ref) async {
 
 final lenderNotificationsProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
-  final res =
-      await ref.read(lenderRepositoryProvider).listNotifications();
+  final res = await ref.read(lenderRepositoryProvider).listNotifications();
   if (res.success) return res.data!;
   throw Exception(res.error);
 });
@@ -71,14 +70,11 @@ final lenderLifetimeStatsProvider =
     FutureProvider<Map<String, dynamic>>((ref) async {
   final loans = await ref.watch(lenderMyLoansProvider.future);
   final totalLoans = loans.length;
-  final activeLoans =
-      loans.where((l) => l.status == LoanStatus.active).length;
+  final activeLoans = loans.where((l) => l.status == LoanStatus.active).length;
   final completedLoans =
       loans.where((l) => l.status == LoanStatus.completed).length;
-  final totalBorrowed =
-      loans.fold<double>(0, (s, l) => s + l.principalAmount);
-  final totalPayable =
-      loans.fold<double>(0, (s, l) => s + l.totalPayable);
+  final totalBorrowed = loans.fold<double>(0, (s, l) => s + l.principalAmount);
+  final totalPayable = loans.fold<double>(0, (s, l) => s + l.totalPayable);
   final totalOutstanding =
       loans.fold<double>(0, (s, l) => s + l.outstandingBalance);
   return {
@@ -89,4 +85,11 @@ final lenderLifetimeStatsProvider =
     'total_payable': totalPayable,
     'outstanding_balance': totalOutstanding,
   };
+});
+
+final lenderLoanTermTiersProvider =
+    FutureProvider<List<LoanTermTierModel>>((ref) async {
+  final res = await ref.read(lenderRepositoryProvider).getLoanTermTiers();
+  if (res.success) return res.data!;
+  throw Exception(res.error);
 });

@@ -159,6 +159,17 @@ Deno.serve(async (req: Request) => {
       return Response.json({ message: 'Settings updated' }, { headers: corsHeaders });
     }
 
+    if (req.method === 'GET' && path === '/tiers') {
+      await requireAuth(req);
+      const { data, error } = await svc
+        .from('loan_term_tiers')
+        .select('*')
+        .eq('is_active', true)
+        .order('min_amount');
+      if (error) throw error;
+      return Response.json({ tiers: data ?? [] }, { headers: corsHeaders });
+    }
+
     return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders });
   } catch (error) {
     return errorResponse(error, corsHeaders);

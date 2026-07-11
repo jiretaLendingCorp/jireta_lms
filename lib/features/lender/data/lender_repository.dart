@@ -23,6 +23,7 @@ import '../../../shared/models/loan_model.dart';
 import '../../../shared/models/payment_model.dart';
 import '../../../shared/models/kyc_model.dart';
 import '../../../shared/models/notification_model.dart';
+import '../../../shared/models/loan_term_tier_model.dart';
 
 class LenderRepository {
   final DioClient _client = DioClient.instance;
@@ -252,5 +253,17 @@ class LenderRepository {
       }
     } catch (_) {}
     return e.message ?? 'Request failed';
+  }
+
+  Future<ApiResponse<List<LoanTermTierModel>>> getLoanTermTiers() async {
+    try {
+      final res = await _client.get(ApiEndpoints.systemSettingsTiers);
+      final tiers = ((res.data as Map)['tiers'] as List)
+          .map((t) => LoanTermTierModel.fromJson(t as Map<String, dynamic>))
+          .toList();
+      return ApiResponse.ok(tiers);
+    } on DioException catch (e) {
+      return ApiResponse.fail(_err(e));
+    }
   }
 }

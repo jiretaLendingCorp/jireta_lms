@@ -10,6 +10,8 @@ import '../../../shared/models/kyc_model.dart';
 import '../../../shared/models/assignment_model.dart';
 import '../../../shared/models/app_user.dart';
 import '../../../shared/models/notification_model.dart';
+import '../../../shared/models/loan_term_tier_model.dart';
+import '../../../shared/models/report_model.dart';
 
 class EmpRepository {
   final DioClient _client = DioClient.instance;
@@ -17,9 +19,12 @@ class EmpRepository {
   Future<ApiResponse<List<LoanModel>>> listLoans({String? status}) async {
     try {
       final res = await _client.get(ApiEndpoints.loanApplyList,
-          queryParameters: {if (status != null && status != 'all') 'status': status});
+          queryParameters: {
+            if (status != null && status != 'all') 'status': status
+          });
       final loans = ((res.data as Map)['loans'] as List)
-          .map((l) => LoanModel.fromJson(l as Map<String, dynamic>)).toList();
+          .map((l) => LoanModel.fromJson(l as Map<String, dynamic>))
+          .toList();
       return ApiResponse.ok(loans);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -29,16 +34,21 @@ class EmpRepository {
   Future<ApiResponse<LoanModel>> getLoan(String id) async {
     try {
       final res = await _client.get('${ApiEndpoints.loanApplyGet}/$id');
-      return ApiResponse.ok(LoanModel.fromJson(res.data as Map<String, dynamic>));
+      return ApiResponse.ok(
+          LoanModel.fromJson(res.data as Map<String, dynamic>));
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
     }
   }
 
-  Future<ApiResponse<void>> approveLoan(String id, int termDays, String freq) async {
+  Future<ApiResponse<void>> approveLoan(
+      String id, int termDays, String freq) async {
     try {
-      await _client.post(ApiEndpoints.loanApprove,
-          data: {'loan_id': id, 'term_days': termDays, 'payment_frequency': freq});
+      await _client.post(ApiEndpoints.loanApprove, data: {
+        'loan_id': id,
+        'term_days': termDays,
+        'payment_frequency': freq
+      });
       return ApiResponse.ok(null);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -57,10 +67,12 @@ class EmpRepository {
 
   Future<ApiResponse<List<PaymentModel>>> listPayments({String? status}) async {
     try {
-      final res = await _client.get(ApiEndpoints.paymentList,
-          queryParameters: {if (status != null && status != 'all') 'status': status});
+      final res = await _client.get(ApiEndpoints.paymentList, queryParameters: {
+        if (status != null && status != 'all') 'status': status
+      });
       final payments = ((res.data as Map)['payments'] as List)
-          .map((p) => PaymentModel.fromJson(p as Map<String, dynamic>)).toList();
+          .map((p) => PaymentModel.fromJson(p as Map<String, dynamic>))
+          .toList();
       return ApiResponse.ok(payments);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -97,10 +109,12 @@ class EmpRepository {
 
   Future<ApiResponse<List<KycModel>>> listKyc({String? status}) async {
     try {
-      final res = await _client.get(ApiEndpoints.kycList,
-          queryParameters: {if (status != null && status != 'all') 'status': status});
+      final res = await _client.get(ApiEndpoints.kycList, queryParameters: {
+        if (status != null && status != 'all') 'status': status
+      });
       final kycs = ((res.data as Map)['kyc'] as List)
-          .map((k) => KycModel.fromJson(k as Map<String, dynamic>)).toList();
+          .map((k) => KycModel.fromJson(k as Map<String, dynamic>))
+          .toList();
       return ApiResponse.ok(kycs);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -118,8 +132,8 @@ class EmpRepository {
 
   Future<ApiResponse<void>> rejectKyc(String id, String reason) async {
     try {
-      await _client.post(ApiEndpoints.kycReject,
-          data: {'kyc_id': id, 'reason': reason});
+      await _client
+          .post(ApiEndpoints.kycReject, data: {'kyc_id': id, 'reason': reason});
       return ApiResponse.ok(null);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -130,7 +144,8 @@ class EmpRepository {
     try {
       final res = await _client.get(ApiEndpoints.assignmentList);
       final data = ((res.data as Map)['assignments'] as List)
-          .map((a) => AssignmentModel.fromJson(a as Map<String, dynamic>)).toList();
+          .map((a) => AssignmentModel.fromJson(a as Map<String, dynamic>))
+          .toList();
       return ApiResponse.ok(data);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -148,10 +163,11 @@ class EmpRepository {
 
   Future<ApiResponse<List<AppUser>>> listRiders() async {
     try {
-      final res = await _client.get(ApiEndpoints.userList,
-          queryParameters: {'role': 'rider'});
+      final res = await _client
+          .get(ApiEndpoints.userList, queryParameters: {'role': 'rider'});
       final data = ((res.data as Map)['users'] as List)
-          .map((u) => AppUser.fromJson(u as Map<String, dynamic>)).toList();
+          .map((u) => AppUser.fromJson(u as Map<String, dynamic>))
+          .toList();
       return ApiResponse.ok(data);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -161,10 +177,11 @@ class EmpRepository {
   Future<ApiResponse<List<AppUser>>> listUsers({String? role}) async {
     try {
       final params = role != null && role != 'all' ? {'role': role} : null;
-      final res = await _client.get(ApiEndpoints.userList,
-          queryParameters: params);
+      final res =
+          await _client.get(ApiEndpoints.userList, queryParameters: params);
       final data = ((res.data as Map)['users'] as List)
-          .map((u) => AppUser.fromJson(u as Map<String, dynamic>)).toList();
+          .map((u) => AppUser.fromJson(u as Map<String, dynamic>))
+          .toList();
       return ApiResponse.ok(data);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -184,7 +201,8 @@ class EmpRepository {
     try {
       final res = await _client.get(ApiEndpoints.notifications);
       final data = ((res.data as Map)['notifications'] as List)
-          .map((n) => NotificationModel.fromJson(n as Map<String, dynamic>)).toList();
+          .map((n) => NotificationModel.fromJson(n as Map<String, dynamic>))
+          .toList();
       return ApiResponse.ok(data);
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
@@ -202,8 +220,35 @@ class EmpRepository {
     }
     try {
       final d = e.response?.data;
-      if (d is Map) return d['error'] as String? ?? d['message'] as String? ?? 'Request failed';
+      if (d is Map)
+        return d['error'] as String? ??
+            d['message'] as String? ??
+            'Request failed';
     } catch (_) {}
     return e.message ?? 'Request failed';
+  }
+
+  Future<ApiResponse<List<LoanTermTierModel>>> getLoanTermTiers() async {
+    try {
+      final res = await _client.get(ApiEndpoints.systemSettingsTiers);
+      final tiers = ((res.data as Map)['tiers'] as List)
+          .map((t) => LoanTermTierModel.fromJson(t as Map<String, dynamic>))
+          .toList();
+      return ApiResponse.ok(tiers);
+    } on DioException catch (e) {
+      return ApiResponse.fail(_err(e));
+    }
+  }
+
+  Future<ApiResponse<ReportResult>> getReport() async {
+    try {
+      final kpiRes = await _client.get(ApiEndpoints.analyticsKpi);
+      final chartsRes = await _client.get(ApiEndpoints.analyticsCharts);
+      final kpi = kpiRes.data as Map<String, dynamic>;
+      final charts = chartsRes.data as Map<String, dynamic>;
+      return ApiResponse.ok(ReportResult.fromJson(kpi, charts));
+    } on DioException catch (e) {
+      return ApiResponse.fail(_err(e));
+    }
   }
 }

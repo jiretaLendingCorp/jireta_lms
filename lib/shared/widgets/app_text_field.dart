@@ -29,6 +29,7 @@ class AppTextField extends StatefulWidget {
   final EdgeInsetsGeometry? contentPadding;
   final bool enabled;
   final String? helperText;
+  final String? errorText;
 
   const AppTextField({
     super.key,
@@ -56,6 +57,7 @@ class AppTextField extends StatefulWidget {
     this.contentPadding,
     this.enabled = true,
     this.helperText,
+    this.errorText,
   });
 
   @override
@@ -104,7 +106,7 @@ class _AppTextFieldState extends State<AppTextField> {
         Text(
           widget.label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.75),
+            color: Colors.white.withValues(alpha: 0.75),
             fontSize: 13,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
@@ -139,6 +141,7 @@ class _AppTextFieldState extends State<AppTextField> {
             ),
             decoration: InputDecoration(
               hintText: widget.hint,
+              errorText: widget.errorText,
               prefixIcon: widget.prefixIcon != null
                   ? Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -151,15 +154,17 @@ class _AppTextFieldState extends State<AppTextField> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
               filled: true,
               fillColor: _isFocused
-                  ? Colors.white.withOpacity(0.11)
-                  : Colors.white.withOpacity(0.08),
+                  ? Colors.white.withValues(alpha: 0.11)
+                  : Colors.white.withValues(alpha: 0.08),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(13),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
+                borderSide:
+                    BorderSide(color: Colors.white.withValues(alpha: 0.18)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(13),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
+                borderSide:
+                    BorderSide(color: Colors.white.withValues(alpha: 0.18)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(13),
@@ -176,7 +181,7 @@ class _AppTextFieldState extends State<AppTextField> {
                     const BorderSide(color: Color(0xFFFF6B6B), width: 1.5),
               ),
               hintStyle: TextStyle(
-                color: Colors.white.withOpacity(0.35),
+                color: Colors.white.withValues(alpha: 0.35),
                 fontSize: 14,
               ),
               errorStyle: const TextStyle(
@@ -193,7 +198,7 @@ class _AppTextFieldState extends State<AppTextField> {
             widget.helperText!,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -250,6 +255,7 @@ class _AppTextFieldState extends State<AppTextField> {
             ),
             decoration: InputDecoration(
               hintText: widget.hint,
+              errorText: widget.errorText,
               prefixIcon: widget.prefixIcon != null
                   ? Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),

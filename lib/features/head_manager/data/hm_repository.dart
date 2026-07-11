@@ -11,6 +11,8 @@ import '../../../shared/models/kyc_model.dart';
 import '../../../shared/models/assignment_model.dart';
 import '../../../shared/models/audit_log_model.dart';
 import '../../../shared/models/notification_model.dart';
+import '../../../shared/models/loan_term_tier_model.dart';
+import '../../../shared/models/report_model.dart';
 
 class HmRepository {
   final DioClient _client = DioClient.instance;
@@ -57,7 +59,8 @@ class HmRepository {
   Future<ApiResponse<void>> updateUser(
       String id, Map<String, dynamic> payload) async {
     try {
-      await _client.patch(ApiEndpoints.userUpdate, data: {'id': id, ...payload});
+      await _client
+          .patch(ApiEndpoints.userUpdate, data: {'id': id, ...payload});
       return ApiResponse.ok(null, message: 'User updated');
     } on DioException catch (e) {
       return ApiResponse.fail(_extractError(e));
@@ -88,7 +91,8 @@ class HmRepository {
     int page = 1,
   }) async {
     try {
-      final res = await _client.get(ApiEndpoints.loanApplyList, queryParameters: {
+      final res =
+          await _client.get(ApiEndpoints.loanApplyList, queryParameters: {
         if (status != null) 'status': status,
         if (lenderId != null) 'lender_id': lenderId,
         'page': page,
@@ -106,7 +110,8 @@ class HmRepository {
   Future<ApiResponse<LoanModel>> getLoan(String id) async {
     try {
       final res = await _client.get('${ApiEndpoints.loanApplyGet}/$id');
-      return ApiResponse.ok(LoanModel.fromJson(res.data as Map<String, dynamic>));
+      return ApiResponse.ok(
+          LoanModel.fromJson(res.data as Map<String, dynamic>));
     } on DioException catch (e) {
       return ApiResponse.fail(_extractError(e));
     }
@@ -115,8 +120,11 @@ class HmRepository {
   Future<ApiResponse<void>> approveLoan(
       String id, int termDays, String frequency) async {
     try {
-      await _client.post(ApiEndpoints.loanApprove,
-          data: {'loan_id': id, 'term_days': termDays, 'payment_frequency': frequency});
+      await _client.post(ApiEndpoints.loanApprove, data: {
+        'loan_id': id,
+        'term_days': termDays,
+        'payment_frequency': frequency
+      });
       return ApiResponse.ok(null, message: 'Loan approved');
     } on DioException catch (e) {
       return ApiResponse.fail(_extractError(e));
@@ -227,8 +235,8 @@ class HmRepository {
 
   Future<ApiResponse<void>> rejectKyc(String id, String reason) async {
     try {
-      await _client.post(ApiEndpoints.kycReject,
-          data: {'kyc_id': id, 'reason': reason});
+      await _client
+          .post(ApiEndpoints.kycReject, data: {'kyc_id': id, 'reason': reason});
       return ApiResponse.ok(null);
     } on DioException catch (e) {
       return ApiResponse.fail(_extractError(e));
@@ -264,7 +272,10 @@ class HmRepository {
       {String? from, String? to}) async {
     try {
       final res = await _client.get(ApiEndpoints.analyticsCharts,
-          queryParameters: {if (from != null) 'from': from, if (to != null) 'to': to});
+          queryParameters: {
+            if (from != null) 'from': from,
+            if (to != null) 'to': to
+          });
       return ApiResponse.ok(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
       return ApiResponse.fail(_extractError(e));
@@ -330,7 +341,8 @@ class HmRepository {
     }
   }
 
-  Future<ApiResponse<void>> createAssignment(Map<String, dynamic> payload) async {
+  Future<ApiResponse<void>> createAssignment(
+      Map<String, dynamic> payload) async {
     try {
       await _client.post(ApiEndpoints.assignmentCreate, data: payload);
       return ApiResponse.ok(null, message: 'Assignment created');
@@ -341,8 +353,8 @@ class HmRepository {
 
   Future<ApiResponse<List<AppUser>>> listRiders() async {
     try {
-      final res = await _client.get(ApiEndpoints.userList,
-          queryParameters: {'role': 'rider'});
+      final res = await _client
+          .get(ApiEndpoints.userList, queryParameters: {'role': 'rider'});
       final data = res.data as Map<String, dynamic>;
       final users = (data['users'] as List)
           .map((u) => AppUser.fromJson(u as Map<String, dynamic>))
@@ -352,7 +364,7 @@ class HmRepository {
       return ApiResponse.fail(_extractError(e));
     }
   }
-  
+
   /// Returns lenders with active/pending/approved loans for assignment dropdown.
   /// Calls GET /loan-apply/active-lenders via Dio (auth header attached).
   Future<ApiResponse<List<dynamic>>> getActiveLenders() async {
@@ -397,10 +409,60 @@ class HmRepository {
     }
   }
 
-    String _extractError(DioException e) {
+  /// Fetches all loan term tiers. Calls GET /system-settings/tiers via Dio.
+  Future<ApiResponse<List<LoanTermTierModel>>> listSystemTiers() async {
+    try {
+      final res = await _client.get(ApiEndpoints.systemSettingsTiers);
+      final data = res.data as Map<String, dynamic>;
+      final tiers = (data['tiers'] as List)
+          .map((t) => LoanTermTierModel.fromJson(t as Map<String, dynamic>))
+          .toList();
+      return ApiResponse.ok(tiers);
+    } on DioException catch (e) {
+      return ApiResponse.fail(_extractError(e));
+    }
+  }
+
+  /// Updates a single loan term tier. Calls POST /system-settings/tiers/update via Dio.
+  Future<ApiResponse<void>> updateSystemTier(
+      Map<String, dynamic> payload) async {
+    try {
+      await _client.post(ApiEndpoints.systemSettingsTiersUpdate, data: payload);
+      return ApiResponse.ok(null, message: 'Tier updated');
+    } on DioException catch (e) {
+      return ApiResponse.fail(_extractError(e));
+    }
+  }
+
+  /// Generates a typed analytics report. Calls GET /analytics/report via Dio.
+  Future<ApiResponse<ReportModel>> generateReport({
+    required String type,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    try {
+      final res = await _client.get(
+        ApiEndpoints.analyticsReport,
+        queryParameters: {
+          'type': type,
+          if (dateFrom != null) 'date_from': dateFrom,
+          if (dateTo != null) 'date_to': dateTo,
+        },
+      );
+      return ApiResponse.ok(
+          ReportModel.fromJson(res.data as Map<String, dynamic>));
+    } on DioException catch (e) {
+      return ApiResponse.fail(_extractError(e));
+    }
+  }
+
+  String _extractError(DioException e) {
     try {
       final data = e.response?.data;
-      if (data is Map) return data['error'] as String? ?? data['message'] as String? ?? 'Request failed';
+      if (data is Map)
+        return data['error'] as String? ??
+            data['message'] as String? ??
+            'Request failed';
     } catch (_) {}
     return e.message ?? 'Request failed';
   }

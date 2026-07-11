@@ -47,6 +47,7 @@ class ApiEndpoints {
 
   static const String systemSettings = '/system-settings';
   static const String systemSettingsUpdate = '/system-settings/update';
+  static const String systemSettingsTiers = '/system-settings/tiers';
 
   static const String analytics = '/analytics';
   static const String analyticsKpi = '/analytics/kpi';
@@ -59,7 +60,7 @@ class ApiEndpoints {
   static const String fcmUnregister = '/fcm-register/unregister';
 
   static const String penaltyCompute = '/penalty-compute';
-   // Loan-apply sub-routes (new)
+  // Loan-apply sub-routes (new)
   static const String loanApplyActiveLenders = '/loan-apply/active-lenders';
   static const String loanApplyUploadSignature = '/loan-apply/upload-signature';
 
@@ -68,13 +69,12 @@ class ApiEndpoints {
   static const String kycMySubmission = '/kyc-submit/my';
   static const String kycPendingLenders = '/kyc-review/pending-lenders';
 
-
   // KYC sub-routes
-  static const String kycGetDetail        = '/kyc-review/get';
- 
+  static const String kycGetDetail = '/kyc-review/get';
 
   // User sub-routes
-  static const String userGetDetail        = '/user-update/get';
-  static const String userReactivate       = '/user-update/reactivate';
-  static const String userCompleteForceChg = '/user-update/complete-force-change';
+  static const String userGetDetail = '/user-update/get';
+  static const String userReactivate = '/user-update/reactivate';
+  static const String userCompleteForceChg =
+      '/user-update/complete-force-change';
 }
