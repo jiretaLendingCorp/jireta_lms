@@ -8,7 +8,7 @@
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireAuth, requireRole, getServiceClient, errorResponse } from '../_shared/auth.ts';
-import { pushToUser, PushTemplates } from '../_shared/push.ts';
+import { pushToUser, PushTemplates } from '../_shared/fcm.ts';
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);

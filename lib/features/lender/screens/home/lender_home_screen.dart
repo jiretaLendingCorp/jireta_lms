@@ -15,7 +15,6 @@ import '../../../../shared/models/loan_model.dart';
 import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../providers/lender_providers.dart';
 
@@ -74,9 +73,8 @@ class LenderHomeScreen extends ConsumerWidget {
                 ),
               ),
               data: (loans) {
-                final active = loans
-                    .where((l) => l.status == LoanStatus.active)
-                    .toList();
+                final active =
+                    loans.where((l) => l.status == LoanStatus.active).toList();
                 final pending = loans
                     .where((l) =>
                         l.status == LoanStatus.pending ||
@@ -205,7 +203,8 @@ class _Header extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
                 ),
                 child: const Icon(AppIcons.notifications,
                     color: Colors.white, size: 20),
@@ -305,8 +304,8 @@ class _ActiveLoanCard extends StatelessWidget {
                       color: _accent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(AppIcons.wallet,
-                        color: _accent, size: 16),
+                    child:
+                        const Icon(AppIcons.wallet, color: _accent, size: 16),
                   ),
                   const SizedBox(width: 8),
                   Text('Active Loan',
@@ -331,7 +330,8 @@ class _ActiveLoanCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text('Outstanding balance',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
           const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
@@ -355,7 +355,8 @@ class _ActiveLoanCard extends StatelessWidget {
                 Text(
                   'Due ${loan.maturityDate!.toDisplayDate}',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55), fontSize: 11),
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 11),
                 ),
             ],
           ),
@@ -392,8 +393,8 @@ class _PendingCard extends StatelessWidget {
               color: AppColors.warning.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(AppIcons.clock,
-                color: AppColors.warning, size: 22),
+            child:
+                const Icon(AppIcons.clock, color: AppColors.warning, size: 22),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -408,7 +409,8 @@ class _PendingCard extends StatelessWidget {
                 Text(
                   '$count application${count > 1 ? 's' : ''} under review',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65), fontSize: 13),
+                      color: Colors.white.withValues(alpha: 0.65),
+                      fontSize: 13),
                 ),
               ],
             ),
@@ -441,8 +443,8 @@ class _NoLoanCard extends StatelessWidget {
                       color: _accent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(AppIcons.wallet,
-                        color: _accent, size: 16),
+                    child:
+                        const Icon(AppIcons.wallet, color: _accent, size: 16),
                   ),
                   const SizedBox(width: 8),
                   Text('Outstanding Balance',
@@ -453,7 +455,8 @@ class _NoLoanCard extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -478,7 +481,8 @@ class _NoLoanCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text('Apply for a loan from ₱3,000 to ₱500,000',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
           const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
@@ -571,9 +575,7 @@ class _ActionTile extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500),
+                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
         ],
