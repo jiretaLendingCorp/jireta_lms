@@ -415,13 +415,3 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # All other sub-paths (/, /change-password, /upload-avatar, /update) call
 # requireAuth() internally. Setting verify_jwt = false lets the function decide
 # per-path instead of Supabase Gateway blocking the request at the edge.
-[functions.auth-profile]
-verify_jwt = false
-# ── Per-function JWT verification overrides ───────────────────────────────────
-# auth-profile handles its own auth per path:
-#   /register-lender   — public (no session yet)
-#   /forgot-password   — public
-#   /reset-password    — public
-# All other sub-paths call requireAuth() themselves.
-[functions.auth-profile]
-verify_jwt = false
