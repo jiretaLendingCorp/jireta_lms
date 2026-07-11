@@ -22,15 +22,11 @@ class ShimmerBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor = isGlass
-        ? Colors.white.withOpacity(0.08)
-        : (isDark
-            ? AppColors.webBorderSoftDk
-            : const Color(0xFFEBECF0));
+        ? Colors.white.withValues(alpha: 0.08)
+        : (isDark ? AppColors.webBorderSoftDk : const Color(0xFFEBECF0));
     final highlightColor = isGlass
-        ? Colors.white.withOpacity(0.16)
-        : (isDark
-            ? AppColors.webBorderDark
-            : const Color(0xFFF5F5F7));
+        ? Colors.white.withValues(alpha: 0.16)
+        : (isDark ? AppColors.webBorderDark : const Color(0xFFF5F5F7));
 
     return Shimmer.fromColors(
       baseColor: baseColor,
@@ -66,9 +62,9 @@ class ShimmerCard extends StatelessWidget {
       return Container(
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.12)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         ),
         padding: p,
         child: _shimmerContent(context),

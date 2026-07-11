@@ -220,10 +220,11 @@ class EmpRepository {
     }
     try {
       final d = e.response?.data;
-      if (d is Map)
+      if (d is Map) {
         return d['error'] as String? ??
             d['message'] as String? ??
             'Request failed';
+      }
     } catch (_) {}
     return e.message ?? 'Request failed';
   }
@@ -240,13 +241,22 @@ class EmpRepository {
     }
   }
 
-  Future<ApiResponse<ReportResult>> getReport() async {
+  Future<ApiResponse<ReportResult>> getReport({
+    String type = 'loans',
+    String? dateFrom,
+    String? dateTo,
+  }) async {
     try {
-      final kpiRes = await _client.get(ApiEndpoints.analyticsKpi);
-      final chartsRes = await _client.get(ApiEndpoints.analyticsCharts);
-      final kpi = kpiRes.data as Map<String, dynamic>;
-      final charts = chartsRes.data as Map<String, dynamic>;
-      return ApiResponse.ok(ReportResult.fromJson(kpi, charts));
+      final res = await _client.get(
+        ApiEndpoints.analyticsReport,
+        queryParameters: {
+          'type': type,
+          if (dateFrom != null) 'date_from': dateFrom,
+          if (dateTo != null) 'date_to': dateTo,
+        },
+      );
+      return ApiResponse.ok(
+          ReportResult.fromJson(res.data as Map<String, dynamic>));
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
     }

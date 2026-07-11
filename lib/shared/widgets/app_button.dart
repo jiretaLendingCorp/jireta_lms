@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../core/theme/app_colors.dart';
 
 enum AppButtonSize { sm, md, lg }
+
 enum AppButtonVariant { filled, outlined, ghost, danger, success }
 
 class AppButton extends StatelessWidget {
@@ -208,13 +209,13 @@ class AppButton extends StatelessWidget {
                 ? null
                 : LinearGradient(colors: colors),
             color: onPressed == null || isLoading
-                ? effectiveColor.withOpacity(0.5)
+                ? effectiveColor.withValues(alpha: 0.5)
                 : null,
             borderRadius: BorderRadius.circular(10),
             boxShadow: onPressed != null && !isLoading
                 ? [
                     BoxShadow(
-                      color: colors.first.withOpacity(0.35),
+                      color: colors.first.withValues(alpha: 0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -256,7 +257,7 @@ class AppButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: effectiveColor,
           foregroundColor: effectiveTextColor,
-          disabledBackgroundColor: effectiveColor.withOpacity(0.45),
+          disabledBackgroundColor: effectiveColor.withValues(alpha: 0.45),
           elevation: 0,
           shadowColor: Colors.transparent,
           padding: _effectivePadding,

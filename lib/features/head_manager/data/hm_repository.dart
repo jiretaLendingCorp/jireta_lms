@@ -435,7 +435,7 @@ class HmRepository {
   }
 
   /// Generates a typed analytics report. Calls GET /analytics/report via Dio.
-  Future<ApiResponse<ReportModel>> generateReport({
+  Future<ApiResponse<ReportResult>> generateReport({
     required String type,
     String? dateFrom,
     String? dateTo,
@@ -450,7 +450,7 @@ class HmRepository {
         },
       );
       return ApiResponse.ok(
-          ReportModel.fromJson(res.data as Map<String, dynamic>));
+          ReportResult.fromJson(res.data as Map<String, dynamic>));
     } on DioException catch (e) {
       return ApiResponse.fail(_extractError(e));
     }
@@ -459,10 +459,11 @@ class HmRepository {
   String _extractError(DioException e) {
     try {
       final data = e.response?.data;
-      if (data is Map)
+      if (data is Map) {
         return data['error'] as String? ??
             data['message'] as String? ??
             'Request failed';
+      }
     } catch (_) {}
     return e.message ?? 'Request failed';
   }

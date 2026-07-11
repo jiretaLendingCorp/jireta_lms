@@ -282,7 +282,7 @@ class ReportFilter {
 
 /// On-demand typed report provider. Pass [ReportFilter] to trigger generation.
 final hmGenerateReportProvider =
-    FutureProvider.family<ReportModel, ReportFilter>((ref, filter) async {
+    FutureProvider.family<ReportResult, ReportFilter>((ref, filter) async {
   final repo = ref.read(hmRepositoryProvider);
   final res = await repo.generateReport(
     type: filter.type,
@@ -292,6 +292,75 @@ final hmGenerateReportProvider =
   if (res.success) return res.data!;
   throw Exception(res.error);
 });
+
+// ── Tier update notifier ──────────────────────────────────────────────────────
+
+class HmTiersNotifier extends StateNotifier<AsyncValue<void>> {
+  HmTiersNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  final Ref _ref;
+
+  Future<String?> updateTier(
+      String tierLabel, Map<String, dynamic> payload) async {
+    state = const AsyncValue.loading();
+    final res = await _ref
+        .read(hmRepositoryProvider)
+        .updateSystemTier({'tier_label': tierLabel, ...payload});
+    state = const AsyncValue.data(null);
+    if (res.success) {
+      _ref.invalidate(hmTiersProvider);
+      return null;
+    }
+    return res.error ?? 'Failed to update tier';
+  }
+}
+
+final hmTiersNotifierProvider =
+    StateNotifierProvider<HmTiersNotifier, AsyncValue<void>>(
+  (ref) => HmTiersNotifier(ref),
+);
+
+// ── Report state holder + notifier ───────────────────────────────────────────
+
+/// Holds the most recently generated [ReportResult]; null before first generate.
+final hmReportProvider = StateProvider<ReportResult?>((ref) => null);
+
+class HmReportNotifier extends StateNotifier<AsyncValue<void>> {
+  HmReportNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  final Ref _ref;
+
+  Future<String?> generate({
+    required String reportType,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    state = const AsyncValue.loading();
+    final res = await _ref.read(hmRepositoryProvider).generateReport(
+          type: reportType,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+        );
+    if (res.success) {
+      _ref.read(hmReportProvider.notifier).state = res.data;
+      state = const AsyncValue.data(null);
+      return null;
+    }
+    state = AsyncValue.error(
+        res.error ?? 'Failed to generate report', StackTrace.current);
+    return res.error ?? 'Failed to generate report';
+  }
+
+  void clear() {
+    _ref.read(hmReportProvider.notifier).state = null;
+    state = const AsyncValue.data(null);
+  }
+}
+
+final hmReportNotifierProvider =
+    StateNotifierProvider<HmReportNotifier, AsyncValue<void>>(
+  (ref) => HmReportNotifier(ref),
+);
 
 // ── Active lenders for assignment dropdown (shows name not UUID) ───────────────
 /// Returns lenders who have an active/pending/approved loan.

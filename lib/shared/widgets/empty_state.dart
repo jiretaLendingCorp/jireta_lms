@@ -24,13 +24,13 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final iconColor = isGlass
-        ? Colors.white.withOpacity(0.3)
+        ? Colors.white.withValues(alpha: 0.3)
         : (isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight);
     final titleColor = isGlass
-        ? Colors.white.withOpacity(0.8)
+        ? Colors.white.withValues(alpha: 0.8)
         : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
     final subColor = isGlass
-        ? Colors.white.withOpacity(0.5)
+        ? Colors.white.withValues(alpha: 0.5)
         : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight);
 
     return Center(
@@ -43,7 +43,7 @@ class EmptyState extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: isGlass
-                    ? Colors.white.withOpacity(0.06)
+                    ? Colors.white.withValues(alpha: 0.06)
                     : (isDark
                         ? AppColors.webBorderSoftDk
                         : AppColors.webBorderSoftL),

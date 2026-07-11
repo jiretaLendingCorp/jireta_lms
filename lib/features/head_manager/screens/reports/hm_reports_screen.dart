@@ -488,8 +488,9 @@ class _ReportResults extends StatelessWidget {
                   cells: cols.map((c) {
                     var val = row[c];
                     if (val is double) val = val.toStringAsFixed(2);
-                    if (val is String && val.length > 28)
+                    if (val is String && val.length > 28) {
                       val = '${val.substring(0, 26)}…';
+                    }
                     return DataCell(Text(
                       val?.toString() ?? '—',
                       style: TextStyle(fontSize: 12, color: textPrimary),

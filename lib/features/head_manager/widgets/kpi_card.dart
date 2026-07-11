@@ -50,7 +50,7 @@ class KpiCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.11),
+                  color: color.withValues(alpha: 0.11),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: color),
@@ -114,7 +114,7 @@ class _ChangeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.11),
+        color: color.withValues(alpha: 0.11),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -160,8 +160,7 @@ class KpiGrid extends StatelessWidget {
                 : available >= 520
                     ? 2
                     : 1;
-        final itemWidth =
-            (available - spacing * (cols - 1)) / cols;
+        final itemWidth = (available - spacing * (cols - 1)) / cols;
 
         return Wrap(
           spacing: spacing,

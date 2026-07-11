@@ -48,10 +48,13 @@ class ApiEndpoints {
   static const String systemSettings = '/system-settings';
   static const String systemSettingsUpdate = '/system-settings/update';
   static const String systemSettingsTiers = '/system-settings/tiers';
+  static const String systemSettingsTiersUpdate =
+      '/system-settings/tiers/update';
 
   static const String analytics = '/analytics';
   static const String analyticsKpi = '/analytics/kpi';
   static const String analyticsCharts = '/analytics/charts';
+  static const String analyticsReport = '/analytics/report';
 
   static const String notifications = '/send-notification/list';
   static const String notificationMarkRead = '/send-notification/mark-read';

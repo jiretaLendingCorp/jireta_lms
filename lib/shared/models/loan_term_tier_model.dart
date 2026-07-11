@@ -129,8 +129,9 @@ class LoanTermTierModel {
   static LoanTermTierModel? forAmount(
       List<LoanTermTierModel> tiers, double amount) {
     for (final t in tiers) {
-      if (t.isActive && amount >= t.minAmount && amount <= t.maxAmount)
+      if (t.isActive && amount >= t.minAmount && amount <= t.maxAmount) {
         return t;
+      }
     }
     return null;
   }

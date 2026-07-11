@@ -120,12 +120,15 @@ class _HmSettingsScreenState extends ConsumerState<HmSettingsScreen> {
 
       if (min != null) _minCtrl.text = (min as num).toInt().toString();
       if (max != null) _maxCtrl.text = (max as num).toInt().toString();
-      if (interest != null)
+      if (interest != null) {
         _interestCtrl.text = ((interest as num) * 100).toStringAsFixed(1);
-      if (penalty != null)
+      }
+      if (penalty != null) {
         _penaltyCtrl.text = ((penalty as num) * 100).toStringAsFixed(1);
-      if (grace != null)
+      }
+      if (grace != null) {
         _graceDaysCtrl.text = (grace as num).toInt().toString();
+      }
 
       final methods = data['payment_methods'] as List<dynamic>?;
       if (methods != null) {
@@ -353,8 +356,7 @@ class _TierRowState extends ConsumerState<_TierRow> {
     );
 
     if (mounted) {
-      context.showSnack(
-          error == null ? '${widget.tier.displayLabel} tier updated' : error,
+      context.showSnack(error ?? '${widget.tier.displayLabel} tier updated',
           isError: error != null);
       if (error == null) setState(() => _expanded = false);
     }
