@@ -1,11 +1,7 @@
 // lib/core/network/dio_client.dart
-// FIX: uploadMultipart no longer manually sets Content-Type.
-// Dio automatically sets `multipart/form-data; boundary=...` when the data
-// is a FormData instance.  Manually overriding it with just
-// `multipart/form-data` (no boundary) breaks server-side multipart parsing
-// and causes 403 / connection errors for avatar upload and KYC submit.
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import '../constants/supabase_constants.dart';
 import 'auth_interceptor.dart';
 
@@ -26,15 +22,20 @@ class DioClient {
       ),
     );
 
-    _dio.interceptors.addAll([
-      AuthInterceptor(),
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        error: true,
-        logPrint: (obj) => print('[DIO] $obj'),
-      ),
-    ]);
+    _dio.interceptors.add(AuthInterceptor());
+
+    if (!kReleaseMode) {
+      _dio.interceptors.add(
+        LogInterceptor(
+          requestBody: false,
+          responseBody: false,
+          requestHeader: false,
+          responseHeader: false,
+          error: true,
+          logPrint: (obj) => print('[DIO] $obj'),
+        ),
+      );
+    }
   }
 
   factory DioClient() {
@@ -114,11 +115,6 @@ class DioClient {
     );
   }
 
-  /// FIXED: Do NOT set Content-Type manually for multipart requests.
-  /// Dio detects FormData and automatically sets:
-  ///   Content-Type: multipart/form-data; boundary=<generated>
-  /// Overriding it strips the boundary and breaks multipart parsing on
-  /// the Supabase Edge Function side, resulting in 403 errors.
   Future<Response<T>> uploadMultipart<T>(
     String path,
     FormData formData, {
@@ -128,7 +124,6 @@ class DioClient {
       path,
       data: formData,
       options: Options(
-        // Content-Type intentionally omitted — Dio handles multipart boundary
         receiveTimeout: const Duration(minutes: 5),
         sendTimeout: const Duration(minutes: 5),
       ),

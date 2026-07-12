@@ -1,11 +1,4 @@
 // lib/features/auth/screens/login_screen.dart
-//
-// FIX #1: Changed context.push(RouteConstants.register) to
-//         context.go(RouteConstants.register) so the browser URL
-//         updates from /#/login to /#/register on web.
-//
-// Two-panel web layout (gradient left + white-card right).
-// Mobile: clean white/dark card.  Dark mode works correctly on both.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -122,16 +115,15 @@ class _WebLayoutState extends State<_WebLayout>
                 borderRadius: BorderRadius.circular(22),
                 child: Row(
                   children: [
-                    // ── Left: teal welcome panel ──────────────────────────
                     const _WelcomePanel(),
-                    // ── Right: white form panel ───────────────────────────
                     Expanded(
                       child: Container(
                         color: Colors.white,
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 44, vertical: 36),
-                          child: _LoginForm(s: widget.s),
+                          child:
+                              _LoginForm(s: widget.s, onWhiteBackground: true),
                         ),
                       ),
                     ),
@@ -164,7 +156,6 @@ class _WelcomePanel extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Decorative circles
           Positioned(
             top: -70,
             right: -70,
@@ -189,17 +180,14 @@ class _WelcomePanel extends StatelessWidget {
               ),
             ),
           ),
-          // Content
           Padding(
             padding: const EdgeInsets.all(36),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo at top
                 const LogoWidget(size: 52, showName: false),
                 const SizedBox(height: 22),
-                // Welcome heading
                 const Text(
                   'Welcome\nBack',
                   style: TextStyle(
@@ -230,7 +218,6 @@ class _WelcomePanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 36),
-                // Feature chips
                 const _WelcomeChip(
                     icon: Icons.people_outline_rounded, label: 'Lender Portal'),
                 const SizedBox(height: 10),
@@ -277,7 +264,7 @@ class _WelcomeChip extends StatelessWidget {
   }
 }
 
-// ── Mobile Layout ─────────────────────────────────────────────────────────────
+// ── Mobile Layout — clean, no card ────────────────────────────────────────────
 
 class _MobileLayout extends StatelessWidget {
   final _LoginScreenState s;
@@ -286,36 +273,19 @@ class _MobileLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDark;
-    const cardBg = Colors.white;
-    const borderCol = Color(0xFFE5E7EB);
-    final scaffoldBg =
-        isDark ? const Color(0xFF0F1117) : const Color(0xFFF3F4F6);
-
     return Scaffold(
-      backgroundColor: scaffoldBg,
+      backgroundColor: isDark ? const Color(0xFF0F1117) : Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 56),
               LogoWidget(size: 52, showName: true, darkText: !isDark),
-              const SizedBox(height: 36),
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: borderCol),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.10),
-                      blurRadius: 32,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: _LoginForm(s: s, forceLight: true),
-              ),
+              const SizedBox(height: 52),
+              _LoginForm(s: s, onWhiteBackground: !isDark),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -328,20 +298,21 @@ class _MobileLayout extends StatelessWidget {
 
 class _LoginForm extends ConsumerWidget {
   final _LoginScreenState s;
-  final bool forceLight;
-  const _LoginForm({required this.s, this.forceLight = false});
+  final bool onWhiteBackground;
+  const _LoginForm({required this.s, this.onWhiteBackground = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoading = ref.watch(authProvider).isLoading;
-    const headColor = Color(0xFF111827);
-    const subColor = Color(0xFF6B7280);
-    const bodyColor = Color(0xFF374151);
-    const fillColor = Color(0xFFF9FAFB);
-    const borderCol = Color(0xFFE5E7EB);
-    const iconColor = Color(0xFF9CA3AF);
-    const dividerCol = Color(0xFFE5E7EB);
-    const orColor = Color(0xFF9CA3AF);
+    final isDark = context.isDark && !onWhiteBackground;
+
+    final headColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subColor = isDark ? Colors.white60 : const Color(0xFF6B7280);
+    final bodyColor = isDark ? Colors.white : const Color(0xFF374151);
+    final fillColor =
+        isDark ? Colors.white.withValues(alpha: 0.07) : const Color(0xFFF9FAFB);
+    final borderCol = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
+    final iconColor = isDark ? Colors.white38 : const Color(0xFF9CA3AF);
 
     return Form(
       key: s._formKey,
@@ -349,18 +320,16 @@ class _LoginForm extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Welcome back',
+          Text('Welcome back',
               style: TextStyle(
                   color: headColor,
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.4)),
           const SizedBox(height: 6),
-          const Text('Sign in to your account',
+          Text('Sign in to your account',
               style: TextStyle(color: subColor, fontSize: 14)),
           const SizedBox(height: 32),
-
-          // Email
           _FormField(
             label: 'Email address',
             hint: 'you@example.com',
@@ -368,13 +337,12 @@ class _LoginForm extends ConsumerWidget {
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
+            labelColor: bodyColor,
             keyboardType: TextInputType.emailAddress,
-            prefixIcon: const Icon(AppIcons.email, size: 18, color: iconColor),
+            prefixIcon: Icon(AppIcons.email, size: 18, color: iconColor),
             validator: Validators.email,
           ),
           const SizedBox(height: 16),
-
-          // Password
           _FormField(
             label: 'Password',
             hint: '••••••••',
@@ -382,8 +350,9 @@ class _LoginForm extends ConsumerWidget {
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
+            labelColor: bodyColor,
             obscureText: s._obscure,
-            prefixIcon: const Icon(AppIcons.lock, size: 18, color: iconColor),
+            prefixIcon: Icon(AppIcons.lock, size: 18, color: iconColor),
             suffixIcon: IconButton(
               icon: Icon(
                 s._obscure
@@ -398,16 +367,12 @@ class _LoginForm extends ConsumerWidget {
                 v == null || v.isEmpty ? 'Password is required' : null,
           ),
           const SizedBox(height: 8),
-
-          // Forgot password
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              // Keep push for forgot password (it's a sub-page, not a sibling)
               onPressed: () => context.push(RouteConstants.forgotPassword),
               style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -419,8 +384,6 @@ class _LoginForm extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-
-          // Sign In button
           SizedBox(
             height: 50,
             child: AppButton.gradient(
@@ -432,41 +395,40 @@ class _LoginForm extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-
-          // OR divider
-          const Row(
+          Row(
             children: [
-              Expanded(child: Divider(color: dividerCol)),
+              Expanded(
+                  child: Divider(
+                      color:
+                          isDark ? Colors.white12 : const Color(0xFFE5E7EB))),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Text('OR',
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.2,
-                        color: orColor)),
+                        color:
+                            isDark ? Colors.white38 : const Color(0xFF9CA3AF))),
               ),
-              Expanded(child: Divider(color: dividerCol)),
+              Expanded(
+                  child: Divider(
+                      color:
+                          isDark ? Colors.white12 : const Color(0xFFE5E7EB))),
             ],
           ),
           const SizedBox(height: 20),
-
-          // Google button
           _GoogleSignInButton(
             isLoading: isLoading,
             onPressed: s._googleSignIn,
           ),
           const SizedBox(height: 28),
-
-          // Register link — FIX: use context.go() so the browser URL updates
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text("Don't have an account? ",
+              Text("Don't have an account? ",
                   style: TextStyle(color: subColor, fontSize: 14)),
               GestureDetector(
-                // FIX: was context.push — browser URL stayed on /login.
-                // context.go replaces the current route so URL shows /register.
                 onTap: () => context.go(RouteConstants.register),
                 child: const Text('Register',
                     style: TextStyle(
@@ -491,6 +453,7 @@ class _FormField extends StatelessWidget {
   final Color fillColor;
   final Color borderColor;
   final Color textColor;
+  final Color labelColor;
   final TextInputType keyboardType;
   final bool obscureText;
   final Widget? prefixIcon;
@@ -503,6 +466,7 @@ class _FormField extends StatelessWidget {
     required this.fillColor,
     required this.borderColor,
     required this.textColor,
+    required this.labelColor,
     this.hint,
     this.keyboardType = TextInputType.text,
     this.obscureText = false,
@@ -517,10 +481,8 @@ class _FormField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF374151))),
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w500, color: labelColor)),
         const SizedBox(height: 6),
         TextFormField(
           controller: ctrl,
@@ -530,7 +492,7 @@ class _FormField extends StatelessWidget {
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+            hintStyle: TextStyle(color: borderColor, fontSize: 14),
             filled: true,
             fillColor: fillColor,
             prefixIcon: prefixIcon,
@@ -553,8 +515,7 @@ class _FormField extends StatelessWidget {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: AppColors.error, width: 1.5),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 13),

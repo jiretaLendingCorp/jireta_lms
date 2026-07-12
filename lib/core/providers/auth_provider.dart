@@ -62,6 +62,7 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
       if (event == AuthChangeEvent.signedIn && data.session != null) {
         await _loadProfile(data.session!.user.id);
       } else if (event == AuthChangeEvent.signedOut) {
+        unawaited(PushNotificationService.instance.unregisterToken());
         state = state.copyWith(clearUser: true, initialized: true);
       }
     });
@@ -154,21 +155,8 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         state = state.copyWith(isLoading: false, error: registerErr);
         return registerErr;
       }
-
-      final res = await _supabase.auth.signInWithPassword(
-        email: email.trim(),
-        password: password,
-      );
-      if (res.user == null) {
-        state = state.copyWith(
-          isLoading: false,
-          error: 'Account created, but sign in failed. Please log in.',
-        );
-        return state.error;
-      }
-
-      await _loadProfile(res.user!.id, withRetry: true);
-      return state.error;
+      state = state.copyWith(isLoading: false);
+      return null;
     } on AuthException catch (e) {
       final msg = _mapAuthError(e.message);
       state = state.copyWith(isLoading: false, error: msg);
@@ -286,4 +274,8 @@ final authProvider =
     ref.read(authRepositoryProvider),
     Supabase.instance.client,
   );
+});
+
+final sessionUserIdProvider = Provider<String?>((ref) {
+  return ref.watch(authProvider.select((s) => s.user?.id));
 });

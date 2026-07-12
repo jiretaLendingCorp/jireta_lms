@@ -215,7 +215,7 @@ class HmRepository {
         if (status != null) 'status': status,
       });
       final data = res.data as Map<String, dynamic>;
-      final kycs = (data['kyc'] as List)
+      final kycs = (data['kycs'] as List)
           .map((k) => KycModel.fromJson(k as Map<String, dynamic>))
           .toList();
       return ApiResponse.ok(kycs);
@@ -365,8 +365,6 @@ class HmRepository {
     }
   }
 
-  /// Returns lenders with active/pending/approved loans for assignment dropdown.
-  /// Calls GET /loan-apply/active-lenders via Dio (auth header attached).
   Future<ApiResponse<List<dynamic>>> getActiveLenders() async {
     try {
       final res = await _client.get(ApiEndpoints.loanApplyActiveLenders);
@@ -377,8 +375,6 @@ class HmRepository {
     }
   }
 
-  /// Returns lenders whose KYC is pending/under_review for CI assignment.
-  /// Calls GET /kyc-review/pending-lenders via Dio.
   Future<ApiResponse<List<dynamic>>> getKycPendingLenders() async {
     try {
       final res = await _client.get(ApiEndpoints.kycPendingLenders);
@@ -389,7 +385,6 @@ class HmRepository {
     }
   }
 
-  /// Get a single KYC submission with full details for HM/employee review.
   Future<ApiResponse<Map<String, dynamic>>> getKycDetail(String kycId) async {
     try {
       final res = await _client.get('${ApiEndpoints.kycGet}/$kycId');
@@ -399,7 +394,6 @@ class HmRepository {
     }
   }
 
-  /// Get a single loan with full details for HM/employee review.
   Future<ApiResponse<Map<String, dynamic>>> getLoanDetail(String loanId) async {
     try {
       final res = await _client.get('${ApiEndpoints.loanApplyGet}/$loanId');
@@ -409,7 +403,6 @@ class HmRepository {
     }
   }
 
-  /// Fetches all loan term tiers. Calls GET /system-settings/tiers via Dio.
   Future<ApiResponse<List<LoanTermTierModel>>> listSystemTiers() async {
     try {
       final res = await _client.get(ApiEndpoints.systemSettingsTiers);
@@ -423,7 +416,6 @@ class HmRepository {
     }
   }
 
-  /// Updates a single loan term tier. Calls POST /system-settings/tiers/update via Dio.
   Future<ApiResponse<void>> updateSystemTier(
       Map<String, dynamic> payload) async {
     try {
@@ -434,7 +426,6 @@ class HmRepository {
     }
   }
 
-  /// Generates a typed analytics report. Calls GET /analytics/report via Dio.
   Future<ApiResponse<ReportResult>> generateReport({
     required String type,
     String? dateFrom,
@@ -457,6 +448,14 @@ class HmRepository {
   }
 
   String _extractError(DioException e) {
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.unknown) {
+      return 'Cannot reach server. Check your internet connection or ensure Edge Functions are deployed.';
+    }
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return 'Request timed out. Please try again.';
+    }
     try {
       final data = e.response?.data;
       if (data is Map) {

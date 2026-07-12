@@ -2,6 +2,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/rider_repository.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared/models/assignment_model.dart';
 import '../../../shared/models/notification_model.dart';
 
@@ -11,6 +12,8 @@ final riderRepositoryProvider =
 final riderAssignmentsProvider =
     FutureProvider.family<List<AssignmentModel>, String?>(
   (ref, status) async {
+    final userId = ref.watch(sessionUserIdProvider);
+    if (userId == null) return [];
     final res = await ref
         .read(riderRepositoryProvider)
         .listMyAssignments(status: status);
@@ -22,15 +25,16 @@ final riderAssignmentsProvider =
 final riderAssignmentDetailProvider =
     FutureProvider.family<AssignmentModel, String>(
   (ref, id) async {
-    final res =
-        await ref.read(riderRepositoryProvider).getAssignment(id);
+    ref.watch(sessionUserIdProvider);
+    final res = await ref.read(riderRepositoryProvider).getAssignment(id);
     if (res.success) return res.data!;
     throw Exception(res.error);
   },
 );
 
-final riderStatsProvider =
-    FutureProvider<Map<String, dynamic>>((ref) async {
+final riderStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final userId = ref.watch(sessionUserIdProvider);
+  if (userId == null) return {};
   final res = await ref.read(riderRepositoryProvider).getMyStats();
   if (res.success) return res.data!;
   return {};
@@ -38,21 +42,20 @@ final riderStatsProvider =
 
 final riderNotificationsProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
-  final res =
-      await ref.read(riderRepositoryProvider).listNotifications();
+  final userId = ref.watch(sessionUserIdProvider);
+  if (userId == null) return [];
+  final res = await ref.read(riderRepositoryProvider).listNotifications();
   if (res.success) return res.data!;
   throw Exception(res.error);
 });
 
-/// Lifetime stats derived from all assignments — no extra API call needed.
 final riderLifetimeStatsProvider =
     FutureProvider<Map<String, dynamic>>((ref) async {
   final all = await ref.watch(riderAssignmentsProvider(null).future);
   final completed = all.where((a) => a.status == AssignmentStatus.completed);
   final failed = all.where((a) => a.status == AssignmentStatus.failed);
   final pending = all.where((a) => a.status == AssignmentStatus.pending);
-  final inProgress =
-      all.where((a) => a.status == AssignmentStatus.inProgress);
+  final inProgress = all.where((a) => a.status == AssignmentStatus.inProgress);
   final ci = all.where((a) => a.isCreditInvestigation);
   final collection = all.where((a) => a.isCollection);
   final totalCollected = completed.fold<double>(
@@ -68,8 +71,7 @@ final riderLifetimeStatsProvider =
     'credit_investigations': ci.length,
     'collections': collection.length,
     'total_collected': totalCollected,
-    'completion_rate': all.isEmpty
-        ? 0.0
-        : (completed.length / all.length * 100),
+    'completion_rate':
+        all.isEmpty ? 0.0 : (completed.length / all.length * 100),
   };
 });

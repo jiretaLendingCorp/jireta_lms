@@ -112,7 +112,7 @@ class EmpRepository {
       final res = await _client.get(ApiEndpoints.kycList, queryParameters: {
         if (status != null && status != 'all') 'status': status
       });
-      final kycs = ((res.data as Map)['kyc'] as List)
+      final kycs = ((res.data as Map)['kycs'] as List)
           .map((k) => KycModel.fromJson(k as Map<String, dynamic>))
           .toList();
       return ApiResponse.ok(kycs);
@@ -209,26 +209,6 @@ class EmpRepository {
     }
   }
 
-  String _err(DioException e) {
-    if (e.type == DioExceptionType.connectionError ||
-        e.type == DioExceptionType.unknown) {
-      return 'Cannot reach server. Check internet connection or deploy Edge Functions.';
-    }
-    if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout) {
-      return 'Request timed out. Please try again.';
-    }
-    try {
-      final d = e.response?.data;
-      if (d is Map) {
-        return d['error'] as String? ??
-            d['message'] as String? ??
-            'Request failed';
-      }
-    } catch (_) {}
-    return e.message ?? 'Request failed';
-  }
-
   Future<ApiResponse<List<LoanTermTierModel>>> getLoanTermTiers() async {
     try {
       final res = await _client.get(ApiEndpoints.systemSettingsTiers);
@@ -260,5 +240,25 @@ class EmpRepository {
     } on DioException catch (e) {
       return ApiResponse.fail(_err(e));
     }
+  }
+
+  String _err(DioException e) {
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.unknown) {
+      return 'Cannot reach server. Check internet connection or deploy Edge Functions.';
+    }
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return 'Request timed out. Please try again.';
+    }
+    try {
+      final d = e.response?.data;
+      if (d is Map) {
+        return d['error'] as String? ??
+            d['message'] as String? ??
+            'Request failed';
+      }
+    } catch (_) {}
+    return e.message ?? 'Request failed';
   }
 }
