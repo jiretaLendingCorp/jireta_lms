@@ -1,15 +1,4 @@
 // supabase/functions/auth-profile/index.ts
-// BUG FIXES:
-// 1. Avatar upload: ext was parsed from file.type, but file.type can be
-//    "image/jpeg" → ext becomes "jpeg" (correct). However we upsert with the
-//    same storagePath so an old "avatar.png" is not cleaned up when a new
-//    "avatar.jpeg" is uploaded. Fixed: always use a constant filename "avatar"
-//    and let storage upsert handle replacement.
-// 2. Profile update: /update route now returns the updated profile so the
-//    Flutter AuthNotifier can refresh state without a second GET round-trip.
-// 3. change-password: now verifies current password via reauthentication
-//    before allowing the change (security hardening).
-// 4. All error paths now log the full error object for easier debugging.
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireAuth, getServiceClient, errorResponse } from '../_shared/auth.ts';
@@ -330,7 +319,6 @@ Deno.serve(async (req: Request) => {
       }
 
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-      // Fall back to inferring MIME from filename when content-type is absent/octet-stream
       const extMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
       const fileExt = (file.name?.split('.').pop() ?? '').toLowerCase();
       const effectiveType = allowedTypes.includes(file.type) ? file.type : (extMap[fileExt] ?? file.type);
@@ -340,9 +328,6 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: corsHeaders },
         );
       }
-
-      // BUG FIX: always use constant filename so upsert works correctly
-      // regardless of whether a previous avatar had a different extension.
       const mimeToExt: Record<string, string> = {
         'image/jpeg': 'jpg',
         'image/png': 'png',
@@ -363,7 +348,6 @@ Deno.serve(async (req: Request) => {
 
       if (storageError) {
         console.error('[auth-profile upload-avatar] storage error:', storageError);
-        // Provide a user-friendly message for common storage errors
         if (storageError.message?.includes('Bucket not found')) {
           return Response.json(
             { error: 'Storage not configured. Please contact support.' },
@@ -376,8 +360,6 @@ Deno.serve(async (req: Request) => {
       const { data: urlData } = svc.storage
         .from('avatars')
         .getPublicUrl(storagePath);
-      
-      // Append cache-busting so Flutter picks up the new image
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
       const { error: dbError } = await svc
@@ -432,8 +414,6 @@ Deno.serve(async (req: Request) => {
         console.error('[auth-profile update] db error:', error);
         throw error;
       }
-
-      // Log profile update in audit
       await svc.from('audit_logs').insert({
         user_id: user.id,
         action: 'update',

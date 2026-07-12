@@ -1,5 +1,4 @@
 // lib/core/router/app_router.dart
-// Fixed: splash only shows on first app launch, not after sign-in.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,6 +46,7 @@ import '../../features/rider/screens/ci/rider_ci_upload_screen.dart';
 import '../../features/rider/screens/history/rider_history_screen.dart';
 import '../../features/rider/screens/profile/rider_profile_screen.dart';
 import '../../features/rider/screens/settings/rider_settings_screen.dart';
+import '../../features/rider/screens/notifications/rider_notifications_screen.dart';
 import '../../features/lender/screens/lender_shell.dart';
 import '../../features/lender/screens/home/lender_home_screen.dart';
 import '../../features/lender/screens/loans/lender_loans_screen.dart';
@@ -68,7 +68,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isSplash = state.matchedLocation == RouteConstants.splash;
 
-      // Wait for auth to initialize — keep showing splash or current page
       if (!authState.initialized) {
         return isSplash ? null : RouteConstants.splash;
       }
@@ -76,7 +75,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loggedIn = authState.isAuthenticated;
       final role = authState.role;
 
-      // Redirect away from splash once auth is initialized
       if (isSplash) {
         if (!loggedIn) return RouteConstants.login;
         return _defaultRouteFor(role);
@@ -263,6 +261,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: RouteConstants.riderSettings,
               builder: (_, __) => const RiderSettingsScreen()),
+          GoRoute(
+              path: RouteConstants.riderNotifications,
+              builder: (_, __) => const RiderNotificationsScreen()),
         ],
       ),
       ShellRoute(
@@ -323,7 +324,6 @@ String _defaultRouteFor(UserRole? role) {
   }
 }
 
-/// Shared slide-up + fade page transition used across all GoRoutes.
 CustomTransitionPage<T> _fadeSlidePage<T>(
   BuildContext context,
   GoRouterState state,

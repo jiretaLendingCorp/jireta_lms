@@ -412,6 +412,19 @@ CREATE TABLE IF NOT EXISTS public.user_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON public.user_sessions (user_id);
 
+-- ─── lender_info ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.lender_info (
+  id             UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id        UUID          NOT NULL UNIQUE REFERENCES public.users(id) ON DELETE CASCADE,
+  employer       TEXT,
+  monthly_income NUMERIC(12,2),
+  birthday       DATE,
+  created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_lender_info_user_id ON public.lender_info (user_id);
+
 -- =============================================================================
 -- FUNCTIONS
 -- =============================================================================
@@ -631,7 +644,7 @@ DECLARE t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'users','loans','kyc_submissions','rider_assignments',
-    'system_settings','payments','rider_info',
+    'system_settings','payments','rider_info','lender_info',
     'loan_term_tiers','disbursement_assignments','fcm_tokens'
   ]
   LOOP

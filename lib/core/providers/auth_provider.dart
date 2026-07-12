@@ -1,15 +1,4 @@
 // lib/core/providers/auth_provider.dart
-//
-// FIX: Login glitch / refresh flicker fixed.
-//   Root cause: onAuthStateChange fires `signedIn` → _loadProfile sets
-//   isLoading: true → router sees isLoading without a user and briefly
-//   redirects back to /login before the profile loads.
-//   Fix: keep the existing user in state during the reload so the router
-//   sees an authenticated user (with isLoading: true) and does NOT redirect.
-//   The loading flag is still set so the UI can show a spinner if needed.
-//
-// FIX: needsForceChange reads force_password_change from the profile fetched
-//   after resetUserPassword sets force_password_change = true in the DB.
 
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -71,34 +60,19 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
     _supabase.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       if (event == AuthChangeEvent.signedIn && data.session != null) {
-        // FIX: Pass keepUserDuringLoad: true so the router does not get an
-        // unauthenticated state (user: null, isLoading: true) that would cause
-        // the login screen to briefly re-render before the profile arrives.
-        await _loadProfile(data.session!.user.id, keepUserDuringLoad: true);
+        await _loadProfile(data.session!.user.id);
       } else if (event == AuthChangeEvent.signedOut) {
         state = state.copyWith(clearUser: true, initialized: true);
       }
     });
   }
 
-  /// [keepUserDuringLoad] — when true the current user is NOT cleared while
-  /// the profile network call is in flight. Use for onAuthStateChange to
-  /// prevent the router from seeing a momentary unauthenticated state.
   Future<void> _loadProfile(
     String userId, {
     bool withRetry = false,
-    bool keepUserDuringLoad = false,
   }) async {
-    // Only clear user if we're explicitly starting fresh (e.g. register flow)
-    if (keepUserDuringLoad) {
-      state = state.copyWith(isLoading: true, clearError: true);
-    } else {
-      state = state.copyWith(isLoading: true, clearError: true);
-    }
+    state = state.copyWith(isLoading: true, clearError: true);
 
-    // When called from register(), the DB trigger that inserts the users row
-    // runs asynchronously after signUp() returns. Retry with short delay so
-    // the profile fetch does not race ahead of the trigger.
     final maxAttempts = withRetry ? 5 : 1;
     const retryDelay = Duration(milliseconds: 800);
     Object? lastError;
@@ -110,7 +84,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         unawaited(PushNotificationService.instance.registerToken());
         return;
       } on DioException catch (e) {
-        // 403 from auth-profile means deactivated or profile not found
         if (e.response?.statusCode == 403) {
           final body = e.response?.data;
           final msg = (body is Map ? (body['error'] as String?) : null) ??
@@ -141,9 +114,6 @@ class AuthNotifier extends StateNotifier<AuthNotifierState> {
         password: password,
       );
       if (res.user != null) {
-        // FIX: keepUserDuringLoad not needed here because we explicitly call
-        // _loadProfile. The onAuthStateChange listener fires too, but since we
-        // are already loading the profile, the duplicate call is harmless.
         await _loadProfile(res.user!.id);
         return state.error;
       }

@@ -1,7 +1,4 @@
 // supabase/functions/_shared/auth.ts
-// SECURITY: requireAuth now also checks is_active. Deactivated users get 403.
-// requireRole enforces RBAC at every Edge Function boundary.
-// All auth errors are logged server-side for audit purposes.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -59,7 +56,6 @@ export async function requireAuth(req: Request): Promise<AuthUser> {
     throw new AuthError('User profile not found', 403);
   }
 
-  // SECURITY: block deactivated accounts at Edge Function level
   if (profile.is_active === false) {
     console.warn('[requireAuth] deactivated account tried to access:', user.id);
     throw new AuthError('Your account has been deactivated. Contact support.', 403);
