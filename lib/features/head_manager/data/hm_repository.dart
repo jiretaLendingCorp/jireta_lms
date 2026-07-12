@@ -40,7 +40,7 @@ class HmRepository {
 
   Future<ApiResponse<AppUser>> getUser(String id) async {
     try {
-      final res = await _client.get('${ApiEndpoints.userList}/$id');
+      final res = await _client.get('${ApiEndpoints.userGetDetail}/$id');
       return ApiResponse.ok(AppUser.fromJson(res.data as Map<String, dynamic>));
     } on DioException catch (e) {
       return ApiResponse.fail(_extractError(e));

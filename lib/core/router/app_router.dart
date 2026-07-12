@@ -96,12 +96,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         return RouteConstants.forceChangePassword;
       }
 
-      // Logged-in user on auth route → go to their home
+      if (state.matchedLocation == RouteConstants.forceChangePassword) {
+        return null;
+      }
+
       if (isAuthRoute) {
         return _defaultRouteFor(role);
       }
 
-      // Role-based route protection
       if (role == UserRole.headManager &&
           !state.matchedLocation.startsWith('/hm')) {
         return RouteConstants.hmDashboard;

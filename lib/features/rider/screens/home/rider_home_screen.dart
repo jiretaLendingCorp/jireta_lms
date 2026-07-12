@@ -1,5 +1,6 @@
 // lib/features/rider/screens/home/rider_home_screen.dart
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,14 +40,17 @@ class RiderHomeScreen extends ConsumerWidget {
             // Stats row
             statsAsync.when(
               loading: () => Row(
-                children: List.generate(3, (i) => Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
-                    child: const ShimmerCard(height: 90),
-                  ),
-                )),
+                children: List.generate(
+                    3,
+                    (i) => Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
+                            child: const ShimmerCard(height: 90),
+                          ),
+                        )),
               ),
-              error: (_, __) => const _StatsRow(pending: 0, completed: 0, collected: 0),
+              error: (_, __) =>
+                  const _StatsRow(pending: 0, completed: 0, collected: 0),
               data: (stats) => _StatsRow(
                 pending: (stats['pending_count'] as num?)?.toInt() ?? 0,
                 completed: (stats['completed_count'] as num?)?.toInt() ?? 0,
@@ -85,29 +89,31 @@ class RiderHomeScreen extends ConsumerWidget {
 
             assignmentsAsync.when(
               loading: () => Column(
-                children: List.generate(3, (_) => const Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: ShimmerCard(height: 80),
-                )),
+                children: List.generate(
+                    3,
+                    (_) => const Padding(
+                          padding: EdgeInsets.only(bottom: 10),
+                          child: ShimmerCard(height: 80),
+                        )),
               ),
-              error: (e, _) => _WhiteCard(
+              error: (e, _) => _GlassCard(
                 child: Text(
                   'Unable to load assignments.',
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
               ),
               data: (assignments) {
-                final today = assignments
-                    .where((a) => a.collectionDate.isToday)
-                    .toList();
+                final today =
+                    assignments.where((a) => a.collectionDate.isToday).toList();
                 if (today.isEmpty) {
-                  return _WhiteCard(
+                  return _GlassCard(
                     child: Column(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: AppColors.riderAccent.withValues(alpha: 0.12),
+                            color:
+                                AppColors.riderAccent.withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -120,7 +126,7 @@ class RiderHomeScreen extends ConsumerWidget {
                         const Text(
                           'All clear for today!',
                           style: TextStyle(
-                            color: Color(0xFF1F2937),
+                            color: Colors.white,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -128,7 +134,9 @@ class RiderHomeScreen extends ConsumerWidget {
                         const SizedBox(height: 4),
                         Text(
                           'No collection assignments today.',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.60),
+                              fontSize: 13),
                         ),
                       ],
                     ),
@@ -165,31 +173,38 @@ class RiderHomeScreen extends ConsumerWidget {
   }
 }
 
-// ── White Card (replaces GlassCard for rider/lender) ──────────────────────────
+// ── Glass Card (glassmorphism container for rider) ─────────────────────────────
 
-class _WhiteCard extends StatelessWidget {
+class _GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final VoidCallback? onTap;
-  const _WhiteCard({required this.child, this.padding, this.onTap});
+  const _GlassCard({required this.child, this.padding, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final card = Container(
-      width: double.infinity,
-      padding: padding ?? const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+    Widget card = ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          width: double.infinity,
+          padding: padding ?? const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
+          child: child,
+        ),
       ),
-      child: child,
     );
     if (onTap != null) {
       return GestureDetector(onTap: onTap, child: card);
@@ -208,17 +223,22 @@ class _LifetimeStats extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (s) {
-        if ((s['total_assignments'] as int? ?? 0) == 0) return const SizedBox.shrink();
-        return _WhiteCard(
+        if ((s['total_assignments'] as int? ?? 0) == 0)
+          return const SizedBox.shrink();
+        return _GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Row(
                 children: [
-                  Icon(Icons.bar_chart_rounded, color: AppColors.riderAccent, size: 18),
+                  Icon(Icons.bar_chart_rounded,
+                      color: AppColors.riderAccent, size: 18),
                   SizedBox(width: 8),
                   Text('Lifetime Summary',
-                      style: TextStyle(color: Color(0xFF1F2937), fontSize: 15, fontWeight: FontWeight.w700)),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700)),
                 ],
               ),
               const SizedBox(height: 14),
@@ -251,9 +271,14 @@ class _SRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.65), fontSize: 13)),
           Text(value,
-              style: const TextStyle(color: Color(0xFF1F2937), fontSize: 13, fontWeight: FontWeight.w600)),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -292,7 +317,8 @@ class _Header extends StatelessWidget {
               ),
               Text(
                 DateTime.now().toDisplayDate,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 13),
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.65), fontSize: 13),
               ),
             ],
           ),
@@ -306,7 +332,8 @@ class _Header extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
-            child: const Icon(AppIcons.notifications, color: Colors.white, size: 20),
+            child: const Icon(AppIcons.notifications,
+                color: Colors.white, size: 20),
           ),
         ),
       ],
@@ -320,17 +347,35 @@ class _StatsRow extends StatelessWidget {
   final int pending;
   final int completed;
   final double collected;
-  const _StatsRow({required this.pending, required this.completed, required this.collected});
+  const _StatsRow(
+      {required this.pending,
+      required this.completed,
+      required this.collected});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _StatCard(label: 'Pending', value: '$pending', icon: AppIcons.clock, color: AppColors.warning)),
+        Expanded(
+            child: _StatCard(
+                label: 'Pending',
+                value: '$pending',
+                icon: AppIcons.clock,
+                color: AppColors.warning)),
         const SizedBox(width: 10),
-        Expanded(child: _StatCard(label: 'Done', value: '$completed', icon: AppIcons.checkCircle, color: AppColors.riderAccent)),
+        Expanded(
+            child: _StatCard(
+                label: 'Done',
+                value: '$completed',
+                icon: AppIcons.checkCircle,
+                color: AppColors.riderAccent)),
         const SizedBox(width: 10),
-        Expanded(child: _StatCard(label: 'Collected', value: collected.toPesoCompact, icon: AppIcons.coins, color: AppColors.success)),
+        Expanded(
+            child: _StatCard(
+                label: 'Collected',
+                value: collected.toPesoCompact,
+                icon: AppIcons.coins,
+                color: AppColors.success)),
       ],
     );
   }
@@ -341,39 +386,57 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  const _StatCard({required this.label, required this.value, required this.icon, required this.color});
+  const _StatCard(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 3))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-            child: Icon(icon, color: color, size: 16),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.13),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
           ),
-          const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(value,
-                style: GoogleFonts.jetBrainsMono(color: const Color(0xFF1F2937), fontSize: 17, fontWeight: FontWeight.w700)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, color: color, size: 16),
+              ),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(value,
+                    style: GoogleFonts.jetBrainsMono(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(height: 2),
+              Text(label,
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.60),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(label,
-              style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11, fontWeight: FontWeight.w500),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-        ],
+        ),
       ),
     );
   }
@@ -387,7 +450,7 @@ class _AssignmentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _WhiteCard(
+    return _GlassCard(
       padding: const EdgeInsets.all(14),
       onTap: () => context.go('/rider/assignments/${assignment.id}'),
       child: Row(
@@ -398,7 +461,8 @@ class _AssignmentTile extends StatelessWidget {
               color: AppColors.riderAccent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(AppIcons.mapPin, color: AppColors.riderAccent, size: 18),
+            child: const Icon(AppIcons.mapPin,
+                color: AppColors.riderAccent, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -407,12 +471,17 @@ class _AssignmentTile extends StatelessWidget {
               children: [
                 Text(
                   assignment.lenderName ?? 'Unknown',
-                  style: const TextStyle(color: Color(0xFF1F2937), fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   assignment.lenderAddress ?? 'No address',
-                  style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.60),
+                      fontSize: 12),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -425,7 +494,10 @@ class _AssignmentTile extends StatelessWidget {
             children: [
               Text(
                 assignment.amountToCollect.toPeso,
-                style: GoogleFonts.jetBrainsMono(color: AppColors.riderAccent, fontSize: 13, fontWeight: FontWeight.w700),
+                style: GoogleFonts.jetBrainsMono(
+                    color: AppColors.riderAccent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
               StatusChip.assignmentStatus(assignment.status.value, small: true),

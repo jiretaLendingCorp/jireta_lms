@@ -1,7 +1,4 @@
 // supabase/functions/user-create/index.ts
-// Bug fix: address, driver_license, vehicle_info, birthday are now saved to DB.
-// Rider-specific fields go to rider_info table (3NF).
-// Audit log now auto-populates actor_name via trigger.
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireRole, getServiceClient, errorResponse, AuthError } from '../_shared/auth.ts';
@@ -116,6 +113,17 @@ Deno.serve(async (req: Request) => {
       };
       const { error: riErr } = await svc.from('rider_info').insert(riderInfo);
       if (riErr) console.error('[user-create] rider_info insert error:', riErr.message);
+    }
+
+    if (role === 'lender') {
+      const lenderInfo: Record<string, unknown> = {
+        user_id: uid,
+        employer: employer?.trim() ?? null,
+        monthly_income: monthly_income ? parseFloat(monthly_income) : null,
+        birthday: birthday?.trim() ?? null,
+      };
+      const { error: liErr } = await svc.from('lender_info').insert(lenderInfo);
+      if (liErr) console.error('[user-create] lender_info insert error:', liErr.message);
     }
 
     await svc.from('audit_logs').insert({

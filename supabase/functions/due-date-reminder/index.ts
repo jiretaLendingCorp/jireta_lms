@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
       };
 
       const { data: lenderProfile } = await svc
-        .from('profiles')
+        .from('users')
         .select('first_name, email, phone')
         .eq('id', loan.lender_id)
         .single();

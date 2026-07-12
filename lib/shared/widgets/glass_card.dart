@@ -3,8 +3,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// WhiteCard — clean white card for Rider & Lender screens.
-/// Replaces GlassCard in all mobile (rider/lender) screens.
+/// WhiteCard — clean white card for screens; pass isGlass: true for rider glassmorphism.
 class WhiteCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -13,6 +12,7 @@ class WhiteCard extends StatelessWidget {
   final double? width;
   final double? height;
   final Color? backgroundColor;
+  final bool isGlass;
 
   const WhiteCard({
     super.key,
@@ -23,11 +23,45 @@ class WhiteCard extends StatelessWidget {
     this.width,
     this.height,
     this.backgroundColor,
+    this.isGlass = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final br = BorderRadius.circular(borderRadius);
+
+    if (isGlass) {
+      Widget glassContent = ClipRRect(
+        borderRadius: br,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: backgroundColor ?? Colors.white.withValues(alpha: 0.12),
+              borderRadius: br,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: padding != null
+                ? Padding(padding: padding!, child: child)
+                : child,
+          ),
+        ),
+      );
+      if (onTap != null) {
+        return GestureDetector(onTap: onTap, child: glassContent);
+      }
+      return glassContent;
+    }
+
     Widget card = Container(
       width: width,
       height: height,
@@ -42,9 +76,7 @@ class WhiteCard extends StatelessWidget {
           ),
         ],
       ),
-      child: padding != null
-          ? Padding(padding: padding!, child: child)
-          : child,
+      child: padding != null ? Padding(padding: padding!, child: child) : child,
     );
 
     if (onTap != null) {

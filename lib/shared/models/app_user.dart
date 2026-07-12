@@ -16,10 +16,8 @@ extension UserRoleX on UserRole {
     }
   }
 
-  bool get isStaff =>
-      this == UserRole.headManager || this == UserRole.employee;
-  bool get isMobile =>
-      this == UserRole.rider || this == UserRole.lender;
+  bool get isStaff => this == UserRole.headManager || this == UserRole.employee;
+  bool get isMobile => this == UserRole.rider || this == UserRole.lender;
 
   static UserRole fromString(String? value) {
     switch (value) {
@@ -48,9 +46,6 @@ class AppUser {
   final bool forcePasswordChange;
   final bool isActive;
   final String? address;
-  final String? employer;
-  final double? monthlyIncome;
-  final double? creditScore;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -66,9 +61,6 @@ class AppUser {
     this.forcePasswordChange = false,
     this.isActive = true,
     this.address,
-    this.employer,
-    this.monthlyIncome,
-    this.creditScore,
     required this.createdAt,
     this.updatedAt,
   });
@@ -88,16 +80,11 @@ class AppUser {
         phone: json['phone'] as String?,
         avatarUrl: json['avatar_url'] as String?,
         role: UserRoleX.fromString(json['role'] as String?),
-        forcePasswordChange:
-            json['force_password_change'] as bool? ?? false,
+        forcePasswordChange: json['force_password_change'] as bool? ?? false,
         isActive: json['is_active'] as bool? ?? true,
         address: json['address'] as String?,
-        employer: json['employer'] as String?,
-        monthlyIncome: (json['monthly_income'] as num?)?.toDouble(),
-        creditScore: (json['credit_score'] as num?)?.toDouble(),
         createdAt: DateTime.parse(
-          json['created_at'] as String? ??
-              DateTime.now().toIso8601String(),
+          json['created_at'] as String? ?? DateTime.now().toIso8601String(),
         ),
         updatedAt: json['updated_at'] != null
             ? DateTime.parse(json['updated_at'] as String)
@@ -116,9 +103,6 @@ class AppUser {
         'force_password_change': forcePasswordChange,
         'is_active': isActive,
         'address': address,
-        'employer': employer,
-        'monthly_income': monthlyIncome,
-        'credit_score': creditScore,
         'created_at': createdAt.toIso8601String(),
       };
 
@@ -134,9 +118,6 @@ class AppUser {
     bool? forcePasswordChange,
     bool? isActive,
     String? address,
-    String? employer,
-    double? monthlyIncome,
-    double? creditScore,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -152,9 +133,6 @@ class AppUser {
         forcePasswordChange: forcePasswordChange ?? this.forcePasswordChange,
         isActive: isActive ?? this.isActive,
         address: address ?? this.address,
-        employer: employer ?? this.employer,
-        monthlyIncome: monthlyIncome ?? this.monthlyIncome,
-        creditScore: creditScore ?? this.creditScore,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );

@@ -17,8 +17,27 @@ Deno.serve(async (req: Request) => {
     const svc = getServiceClient();
 
     if (req.method === 'GET' && path === '/schedule') {
-      await requireRole(req, ['head_manager', 'employee', 'lender']);
+      const user = await requireRole(req, ['head_manager', 'employee', 'lender']);
       const loanId = url.searchParams.get('loan_id');
+
+      if (!loanId) {
+        return Response.json(
+          { error: 'loan_id is required' },
+          { status: 400, headers: corsHeaders },
+        );
+      }
+
+      if (user.role === 'lender') {
+        const { data: loan } = await svc
+          .from('loans')
+          .select('lender_id')
+          .eq('id', loanId)
+          .maybeSingle();
+        if (!loan || loan.lender_id !== user.id) {
+          return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+        }
+      }
+
       const { data, error } = await svc
         .from('payment_schedules')
         .select('*')

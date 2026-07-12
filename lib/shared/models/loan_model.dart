@@ -121,6 +121,7 @@ class LoanModel {
   final double outstandingBalance;
   final double penaltyAmount;
   final LoanStatus status;
+  final PaymentFrequency? preferredFrequency;
   final PaymentFrequency? paymentFrequency;
   final int? termDays;
   final double? installmentAmount;
@@ -150,6 +151,7 @@ class LoanModel {
     required this.outstandingBalance,
     this.penaltyAmount = 0,
     required this.status,
+    this.preferredFrequency,
     this.paymentFrequency,
     this.termDays,
     this.installmentAmount,
@@ -205,6 +207,10 @@ class LoanModel {
         outstandingBalance: (json['outstanding_balance'] as num).toDouble(),
         penaltyAmount: (json['penalty_amount'] as num?)?.toDouble() ?? 0,
         status: LoanStatusX.fromString(json['status'] as String?),
+        preferredFrequency: json['preferred_frequency'] != null
+            ? PaymentFrequencyX.fromString(
+                json['preferred_frequency'] as String?)
+            : null,
         paymentFrequency: json['payment_frequency'] != null
             ? PaymentFrequencyX.fromString(json['payment_frequency'] as String?)
             : null,

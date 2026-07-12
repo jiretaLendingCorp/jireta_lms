@@ -1,7 +1,4 @@
 // supabase/functions/loan-approve/index.ts
-// FIX (016): Changed svc.from('profiles') → svc.from('users') to match the
-// table rename in migration 004. The original code queried profiles for
-// the lender's name/email which always returned 404 after the rename.
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireRole, getServiceClient, errorResponse } from '../_shared/auth.ts';
@@ -82,7 +79,6 @@ Deno.serve(async (req: Request) => {
 
     if (updateErr) throw updateErr;
 
-    // FIX: was svc.from('profiles') — renamed to users in migration 004
     const { data: lenderProfile } = await svc
       .from('users')
       .select('first_name, last_name, email, phone')
@@ -100,21 +96,30 @@ Deno.serve(async (req: Request) => {
       reference_id: loan_id,
     });
 
-    // Audit log
+    const { data: actorProfile } = await svc
+      .from('users')
+      .select('first_name, last_name')
+      .eq('id', user.id)
+      .single();
+
+    const actorName = actorProfile
+      ? `${actorProfile.first_name ?? ''} ${actorProfile.last_name ?? ''}`.trim()
+      : user.email ?? user.id;
+
     await svc.from('audit_logs').insert({
       user_id:     user.id,
       action:      'approve',
       table_name:  'loans',
       record_id:   loan_id,
       new_values: {
-        status:            'approved',
-        term_days:         termDaysNum,
+        status:             'approved',
+        term_days:          termDaysNum,
         payment_frequency,
         installment_amount: installment,
-        approved_by:       `${user.first_name} ${user.last_name}`,
+        approved_by:        actorName,
       },
       description: `Loan ₱${Number(loan.principal_amount).toLocaleString()} approved by `
-                 + `${user.first_name} ${user.last_name} — ${payment_frequency} ₱${installment.toLocaleString()} × ${termDaysNum}d`,
+                 + `${actorName} — ${payment_frequency} ₱${installment.toLocaleString()} × ${termDaysNum}d`,
     });
 
     // Push / SMS / Email (non-blocking)

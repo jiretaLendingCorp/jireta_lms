@@ -9,6 +9,7 @@ import '../../../../core/constants/app_icons.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/models/loan_model.dart';
 import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -249,26 +250,29 @@ class _LifetimeMetricsBar extends ConsumerWidget {
               LayoutBuilder(builder: (_, c) {
                 final wrap = c.maxWidth < 600;
                 final items = [
-                  _LM('Total Loans', '${i('total_loans_ever')}', AppIcons.loans),
+                  _LM('Total Loans', '${i('total_loans_ever')}',
+                      AppIcons.loans),
                   _LM('Lenders', '${i('total_lenders')}', AppIcons.users),
-                  _LM('Riders', '${i('total_riders')}', Icons.two_wheeler_rounded),
+                  _LM('Riders', '${i('total_riders')}',
+                      Icons.two_wheeler_rounded),
                   _LM('Employees', '${i('total_employees')}', AppIcons.profile),
-                  _LM('Disbursed', v('total_disbursed').toPesoCompact, AppIcons.banknote),
-                  _LM('Collected', v('total_collected').toPesoCompact, AppIcons.coins),
+                  _LM('Disbursed', v('total_disbursed').toPesoCompact,
+                      AppIcons.banknote),
+                  _LM('Collected', v('total_collected').toPesoCompact,
+                      AppIcons.coins),
                 ];
                 if (wrap) {
                   return Wrap(
                     spacing: 12,
                     runSpacing: 12,
                     children: items
-                        .map((e) => SizedBox(width: (c.maxWidth - 12) / 2, child: e))
+                        .map((e) =>
+                            SizedBox(width: (c.maxWidth - 12) / 2, child: e))
                         .toList(),
                   );
                 }
                 return Row(
-                  children: items
-                      .map((e) => Expanded(child: e))
-                      .toList(),
+                  children: items.map((e) => Expanded(child: e)).toList(),
                 );
               }),
             ],
@@ -293,8 +297,8 @@ class _LM extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 13,
-                color: AppColors.accent.withValues(alpha: 0.8)),
+            Icon(icon,
+                size: 13, color: AppColors.accent.withValues(alpha: 0.8)),
             const SizedBox(width: 4),
             Flexible(
               child: Text(label,
@@ -359,98 +363,108 @@ class _LoanVolumeChart extends StatelessWidget {
     final gridColor = isDark
         ? Colors.white.withValues(alpha: 0.05)
         : Colors.black.withValues(alpha: 0.05);
-    final labelColor = isDark
-        ? AppColors.textTertiaryDark
-        : AppColors.textTertiaryLight;
+    final labelColor =
+        isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight;
 
     return RepaintBoundary(
-     child: LineChart(
-      LineChartData(
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) => FlLine(
-            color: gridColor,
-            strokeWidth: 1,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: gridColor,
+              strokeWidth: 1,
+            ),
           ),
-        ),
-        titlesData: FlTitlesData(
-          rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 32,
-              getTitlesWidget: (v, _) => Text(
-                v.toInt().toString(),
-                style: TextStyle(fontSize: 11, color: labelColor),
+          titlesData: FlTitlesData(
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (v, _) => Text(
+                  v.toInt().toString(),
+                  style: TextStyle(fontSize: 11, color: labelColor),
+                ),
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 24,
+                getTitlesWidget: (v, _) {
+                  const months = [
+                    '',
+                    'Jan',
+                    'Feb',
+                    'Mar',
+                    'Apr',
+                    'May',
+                    'Jun',
+                    'Jul',
+                    'Aug',
+                    'Sep',
+                    'Oct',
+                    'Nov',
+                    'Dec'
+                  ];
+                  final i = v.toInt().clamp(0, 12);
+                  return Text(
+                    months[i],
+                    style: TextStyle(fontSize: 11, color: labelColor),
+                  );
+                },
               ),
             ),
           ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 24,
-              getTitlesWidget: (v, _) {
-                const months = [
-                  '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-                ];
-                final i = v.toInt().clamp(0, 12);
-                return Text(
-                  months[i],
-                  style: TextStyle(fontSize: 11, color: labelColor),
-                );
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: data,
+              isCurved: true,
+              curveSmoothness: 0.35,
+              color: AppColors.accent,
+              barWidth: 2.5,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.accent.withValues(alpha: 0.15),
+                    AppColors.accent.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (_) =>
+                  isDark ? AppColors.webSurfaceLight : AppColors.webSurfaceDark,
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((s) {
+                  return LineTooltipItem(
+                    s.y.toInt().toString(),
+                    TextStyle(
+                      color: isDark
+                          ? AppColors.textPrimaryLight
+                          : AppColors.textPrimaryDark,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  );
+                }).toList();
               },
             ),
           ),
         ),
-        borderData: FlBorderData(show: false),
-        lineBarsData: [
-          LineChartBarData(
-            spots: data,
-            isCurved: true,
-            curveSmoothness: 0.35,
-            color: AppColors.accent,
-            barWidth: 2.5,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.accent.withValues(alpha: 0.15),
-                  AppColors.accent.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
-        ],
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (_) =>
-                isDark ? AppColors.webSurfaceLight : AppColors.webSurfaceDark,
-            getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((s) {
-                return LineTooltipItem(
-                  s.y.toInt().toString(),
-                  TextStyle(
-                    color: isDark
-                        ? AppColors.textPrimaryLight
-                        : AppColors.textPrimaryDark,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ),
       ),
-     ),
     );
   }
 }
@@ -630,7 +644,7 @@ class _RecentLoansCard extends ConsumerWidget {
 }
 
 class _LoanRow extends StatelessWidget {
-  final dynamic loan;
+  final LoanModel loan;
   final bool isDark;
   final VoidCallback onTap;
   const _LoanRow({
@@ -777,8 +791,7 @@ class _ActionTile extends StatelessWidget {
         InkWell(
           onTap: onTap,
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             child: Row(
               children: [
                 Container(
@@ -815,9 +828,7 @@ class _ActionTile extends StatelessWidget {
             height: 1,
             indent: 20,
             endIndent: 20,
-            color: isDark
-                ? AppColors.webBorderDark
-                : AppColors.webBorderLight,
+            color: isDark ? AppColors.webBorderDark : AppColors.webBorderLight,
           ),
       ],
     );

@@ -41,7 +41,8 @@ final realtimePaymentsStreamProvider = _tableStreamProvider('payments');
 final realtimeKycStreamProvider = _tableStreamProvider('kyc_submissions');
 
 /// Fires whenever the assignments table changes.
-final realtimeAssignmentsStreamProvider = _tableStreamProvider('assignments');
+final realtimeAssignmentsStreamProvider =
+    _tableStreamProvider('rider_assignments');
 
 /// Fires whenever the notifications table changes.
 final realtimeNotificationsStreamProvider =

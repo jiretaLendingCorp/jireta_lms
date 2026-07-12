@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
             svc.from('loans').select('id', { count: 'exact' }),
           ]),
           // Total disbursed (all-time principal_amount on active/closed loans)
-          svc.from('loans').select('principal_amount').in_('status', ['active', 'closed', 'overdue']),
+          svc.from('loans').select('principal_amount').in('status', ['active', 'completed', 'defaulted']),
           // Total collected all-time
           svc.from('payments').select('amount').eq('status', 'verified'),
         ]);

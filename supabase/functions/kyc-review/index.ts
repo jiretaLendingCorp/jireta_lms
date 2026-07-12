@@ -1,6 +1,5 @@
 // supabase/functions/kyc-review/index.ts
 //
-// FIXES:
 //   • Added GET /pending-lenders for Credit Investigation assignment dropdown.
 //   • Added GET /get/:id for full KYC detail view (HM/employee issue 10).
 //   • approve/reject now writes approved_by field to audit_logs.
@@ -183,9 +182,8 @@ Deno.serve(async (req: Request) => {
         action:      'approve',
         table_name:  'kyc_submissions',
         record_id:   kyc_id,
-        new_values:  { status: 'approved' },
+        new_values:  { status: 'approved', approved_by: user.id },
         description: `KYC approved for ${lenderName} by ${user.role}`,
-        approved_by: `${user.id}`,
       });
 
       return Response.json({ message: 'KYC approved' }, { headers: corsHeaders });

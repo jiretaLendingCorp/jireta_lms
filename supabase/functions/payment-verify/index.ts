@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: payment } = await svc
         .from('payments')
-        .select('*, loans(outstanding_balance, total_payable, lender_id)')
+        .select('*, loans:loan_id(outstanding_balance, total_payable, lender_id)')
         .eq('id', payment_id)
         .single();
 
@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { data: lenderProfile } = await svc
-        .from('profiles')
+        .from('users')
         .select('first_name, email, phone')
         .eq('id', loan.lender_id)
         .single();

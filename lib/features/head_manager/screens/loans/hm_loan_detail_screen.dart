@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/models/app_user.dart';
 import '../../../../shared/models/loan_model.dart';
 import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -16,8 +17,7 @@ class HmLoanDetailScreen extends ConsumerStatefulWidget {
   const HmLoanDetailScreen({super.key, required this.id});
 
   @override
-  ConsumerState<HmLoanDetailScreen> createState() =>
-      _HmLoanDetailScreenState();
+  ConsumerState<HmLoanDetailScreen> createState() => _HmLoanDetailScreenState();
 }
 
 class _HmLoanDetailScreenState extends ConsumerState<HmLoanDetailScreen> {
@@ -35,6 +35,7 @@ class _HmLoanDetailScreenState extends ConsumerState<HmLoanDetailScreen> {
         acting: _acting,
         onApprove: () => _approve(loan),
         onReject: () => _reject(loan),
+        onAssignRider: () => _assignRider(loan),
         onDisburse: () => _disburse(loan),
         onClose: () => _close(loan),
         onWaivePenalty: () => _waivePenalty(loan),
@@ -43,59 +44,50 @@ class _HmLoanDetailScreenState extends ConsumerState<HmLoanDetailScreen> {
   }
 
   Future<void> _approve(LoanModel loan) async {
-    final termCtrl = TextEditingController(text: '30');
-    String freq = 'monthly';
+    final freq = loan.preferredFrequency?.value ??
+        loan.paymentFrequency?.value ??
+        'monthly';
+    final termDays = loan.termDays ?? 30;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Approve Loan'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: termCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Term (days)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: freq,
-                decoration: const InputDecoration(
-                  labelText: 'Payment Frequency',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'daily', child: Text('Daily')),
-                  DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-                  DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-                ],
-                onChanged: (v) => setSt(() => freq = v ?? freq),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Approve'),
+      builder: (_) => AlertDialog(
+        title: const Text('Approve Loan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Approve ${loan.principalAmount.toPeso} loan for ${loan.lenderName}?',
             ),
+            const SizedBox(height: 16),
+            _InfoRow('Term', '$termDays days'),
+            _InfoRow(
+              'Payment Frequency',
+              freq[0].toUpperCase() + freq.substring(1),
+            ),
+            if (loan.tierLabel != null) _InfoRow('Tier', loan.tierDisplayLabel),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+            child: const Text('Approve'),
+          ),
+        ],
       ),
     );
 
     if (confirmed != true) return;
     setState(() => _acting = true);
-    final repo = ref.read(hmRepositoryProvider);
-    final res = await repo.approveLoan(
-        loan.id, int.tryParse(termCtrl.text) ?? 30, freq);
+    final res = await ref
+        .read(hmRepositoryProvider)
+        .approveLoan(loan.id, termDays, freq);
     setState(() => _acting = false);
     if (mounted) {
       if (res.success) {
@@ -124,8 +116,9 @@ class _HmLoanDetailScreenState extends ConsumerState<HmLoanDetailScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogCtx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
@@ -144,6 +137,126 @@ class _HmLoanDetailScreenState extends ConsumerState<HmLoanDetailScreen> {
       if (res.success) {
         context.showSnack('Loan rejected');
         ref.invalidate(hmLoanDetailProvider(widget.id));
+        ref.invalidate(hmLoansProvider('pending'));
+      } else {
+        context.showSnack(res.error!, isError: true);
+      }
+    }
+  }
+
+  Future<void> _assignRider(LoanModel loan) async {
+    final ridersAsync = ref.read(hmRidersProvider);
+    final riders = ridersAsync.valueOrNull ?? [];
+
+    AppUser? selectedRider;
+    DateTime collectionDate = DateTime.now().add(const Duration(days: 1));
+    String assignmentType = 'collection';
+    final notesCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: const Text('Assign Rider'),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<AppUser>(
+                  value: selectedRider,
+                  decoration: const InputDecoration(
+                    labelText: 'Select Rider',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: riders
+                      .map((r) => DropdownMenuItem(
+                            value: r,
+                            child: Text(r.fullName),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setSt(() => selectedRider = v),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: assignmentType,
+                  decoration: const InputDecoration(
+                    labelText: 'Assignment Type',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'collection',
+                      child: Text('Collection'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'credit_investigation',
+                      child: Text('Credit Investigation'),
+                    ),
+                  ],
+                  onChanged: (v) =>
+                      setSt(() => assignmentType = v ?? 'collection'),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.calendar_today),
+                  title: Text(collectionDate.toDisplayDate),
+                  subtitle: const Text('Collection Date'),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: collectionDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 90)),
+                    );
+                    if (picked != null) setSt(() => collectionDate = picked);
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed:
+                  selectedRider == null ? null : () => Navigator.pop(ctx, true),
+              child: const Text('Assign'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true || selectedRider == null) return;
+    setState(() => _acting = true);
+    final res = await ref.read(hmRepositoryProvider).createAssignment({
+      'loan_id': loan.id,
+      'rider_id': selectedRider!.id,
+      'lender_id': loan.lenderId,
+      'amount_to_collect': loan.outstandingBalance,
+      'collection_date':
+          '${collectionDate.year}-${collectionDate.month.toString().padLeft(2, '0')}-${collectionDate.day.toString().padLeft(2, '0')}',
+      'assignment_type': assignmentType,
+      if (notesCtrl.text.trim().isNotEmpty) 'notes': notesCtrl.text.trim(),
+    });
+    setState(() => _acting = false);
+    if (mounted) {
+      if (res.success) {
+        context.showSnack('Rider assigned successfully');
+        ref.invalidate(hmLoanDetailProvider(widget.id));
       } else {
         context.showSnack(res.error!, isError: true);
       }
@@ -154,7 +267,8 @@ class _HmLoanDetailScreenState extends ConsumerState<HmLoanDetailScreen> {
     final ok = await ConfirmationDialog.show(
       context,
       title: 'Disburse Loan',
-      message: 'Disburse ${loan.principalAmount.toPeso} to ${loan.lenderName}? This will initiate a Xendit disbursement.',
+      message:
+          'Disburse ${loan.principalAmount.toPeso} to ${loan.lenderName}? This will initiate a Xendit disbursement.',
       confirmLabel: 'Disburse',
     );
     if (ok != true) return;
@@ -208,11 +322,13 @@ class _HmLoanDetailScreenState extends ConsumerState<HmLoanDetailScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Waive')),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Waive'),
+          ),
         ],
       ),
     );
@@ -238,6 +354,7 @@ class _LoanDetail extends StatelessWidget {
   final bool acting;
   final VoidCallback onApprove;
   final VoidCallback onReject;
+  final VoidCallback onAssignRider;
   final VoidCallback onDisburse;
   final VoidCallback onClose;
   final VoidCallback onWaivePenalty;
@@ -247,6 +364,7 @@ class _LoanDetail extends StatelessWidget {
     required this.acting,
     required this.onApprove,
     required this.onReject,
+    required this.onAssignRider,
     required this.onDisburse,
     required this.onClose,
     required this.onWaivePenalty,
@@ -279,6 +397,7 @@ class _LoanDetail extends StatelessWidget {
                 acting: acting,
                 onApprove: onApprove,
                 onReject: onReject,
+                onAssignRider: onAssignRider,
                 onDisburse: onDisburse,
                 onClose: onClose,
                 onWaivePenalty: onWaivePenalty,
@@ -311,13 +430,19 @@ class _LoanDetail extends StatelessWidget {
 class _ActionButtons extends StatelessWidget {
   final LoanModel loan;
   final bool acting;
-  final VoidCallback onApprove, onReject, onDisburse, onClose, onWaivePenalty;
+  final VoidCallback onApprove,
+      onReject,
+      onAssignRider,
+      onDisburse,
+      onClose,
+      onWaivePenalty;
 
   const _ActionButtons({
     required this.loan,
     required this.acting,
     required this.onApprove,
     required this.onReject,
+    required this.onAssignRider,
     required this.onDisburse,
     required this.onClose,
     required this.onWaivePenalty,
@@ -325,10 +450,14 @@ class _ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final canAct = loan.status == LoanStatus.pending ||
+        loan.status == LoanStatus.underReview;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.end,
       children: [
-        if (loan.status == LoanStatus.pending ||
-            loan.status == LoanStatus.underReview) ...[
+        if (canAct) ...[
           AppButton(
             label: 'Approve',
             icon: Icons.check_circle_outline,
@@ -336,13 +465,19 @@ class _ActionButtons extends StatelessWidget {
             isLoading: acting,
             onPressed: onApprove,
           ),
-          const SizedBox(width: 8),
           AppButton(
             label: 'Reject',
             isDanger: true,
             isOutlined: true,
             isLoading: acting,
             onPressed: onReject,
+          ),
+          AppButton(
+            label: 'Assign Rider',
+            icon: Icons.person_pin_circle_outlined,
+            isOutlined: true,
+            isLoading: acting,
+            onPressed: onAssignRider,
           ),
         ],
         if (loan.status == LoanStatus.approved) ...[
@@ -353,6 +488,13 @@ class _ActionButtons extends StatelessWidget {
             isLoading: acting,
             onPressed: onDisburse,
           ),
+          AppButton(
+            label: 'Assign Rider',
+            icon: Icons.person_pin_circle_outlined,
+            isOutlined: true,
+            isLoading: acting,
+            onPressed: onAssignRider,
+          ),
         ],
         if (loan.status == LoanStatus.active) ...[
           AppButton(
@@ -360,6 +502,13 @@ class _ActionButtons extends StatelessWidget {
             isOutlined: true,
             isLoading: acting,
             onPressed: onClose,
+          ),
+          AppButton(
+            label: 'Assign Rider',
+            icon: Icons.person_pin_circle_outlined,
+            isOutlined: true,
+            isLoading: acting,
+            onPressed: onAssignRider,
           ),
         ],
       ],
@@ -427,6 +576,8 @@ class _DetailsCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineLarge),
             const SizedBox(height: 20),
             _Row('Applied', loan.createdAt.toDisplayDate),
+            if (loan.preferredFrequency != null)
+              _Row('Preferred Frequency', loan.preferredFrequency!.label),
             if (loan.approvedAt != null)
               _Row('Approved', loan.approvedAt!.toDisplayDate),
             if (loan.disbursedAt != null)
@@ -434,13 +585,12 @@ class _DetailsCard extends StatelessWidget {
             if (loan.maturityDate != null)
               _Row('Maturity', loan.maturityDate!.toDisplayDate),
             if (loan.paymentFrequency != null)
-              _Row('Frequency', loan.paymentFrequency!.label),
-            if (loan.termDays != null)
-              _Row('Term', '${loan.termDays} days'),
+              _Row('Payment Frequency', loan.paymentFrequency!.label),
+            if (loan.termDays != null) _Row('Term', '${loan.termDays} days'),
             if (loan.installmentAmount != null)
               _Row('Installment', loan.installmentAmount!.toPeso),
-            if (loan.purpose != null)
-              _Row('Purpose', loan.purpose!),
+            if (loan.tierLabel != null) _Row('Tier', loan.tierDisplayLabel),
+            if (loan.purpose != null) _Row('Purpose', loan.purpose!),
             if (loan.rejectionReason != null) ...[
               const Divider(height: 24),
               const Text('Rejection Reason',
@@ -517,8 +667,7 @@ class _PenaltyCard extends StatelessWidget {
                 children: [
                   const Text('Penalty Applied',
                       style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.error)),
+                          fontWeight: FontWeight.w700, color: AppColors.error)),
                   Text('Overdue ${loan.daysOverdue ?? 0} days',
                       style: const TextStyle(fontSize: 13)),
                 ],
@@ -542,6 +691,34 @@ class _PenaltyCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Colors.grey)),
+          Text(value,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }

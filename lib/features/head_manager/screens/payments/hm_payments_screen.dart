@@ -45,8 +45,7 @@ class _HmPaymentsScreenState extends ConsumerState<HmPaymentsScreen>
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             labelColor: AppColors.accent,
-            unselectedLabelColor:
-                Theme.of(context).textTheme.bodyMedium?.color,
+            unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
             indicatorColor: AppColors.accent,
             indicatorSize: TabBarIndicatorSize.label,
             tabs: _statuses
@@ -59,8 +58,7 @@ class _HmPaymentsScreenState extends ConsumerState<HmPaymentsScreen>
         Expanded(
           child: TabBarView(
             controller: _tabs,
-            children:
-                _statuses.map((s) => _PaymentList(status: s)).toList(),
+            children: _statuses.map((s) => _PaymentList(status: s)).toList(),
           ),
         ),
       ],
@@ -90,68 +88,124 @@ class _PaymentList extends ConsumerWidget {
           padding: const EdgeInsets.all(24),
           itemCount: payments.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (_, i) {
-            final p = payments[i];
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.payment_rounded,
-                          size: 20, color: AppColors.success),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            p.lenderName ?? 'Unknown',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${p.method.label} · ${p.createdAt.toDisplayDate}',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          p.amount.toPeso,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        StatusChip.paymentStatus(p.status.value, small: true),
-                      ],
-                    ),
-                    if (p.status.value == 'pending') ...[
-                      const SizedBox(width: 12),
-                      _PaymentActions(paymentId: p.id),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          },
+          itemBuilder: (_, i) => _PaymentCard(payment: payments[i]),
         );
       },
+    );
+  }
+}
+
+class _PaymentCard extends ConsumerWidget {
+  final PaymentModel payment;
+  const _PaymentCard({required this.payment});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = payment;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subColor = isDark ? Colors.white54 : Colors.black54;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.payment_rounded,
+                      size: 20, color: AppColors.success),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.lenderName ?? 'Unknown Borrower',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${p.method.label} · ${p.createdAt.toDisplayDate}',
+                        style: TextStyle(fontSize: 12, color: subColor),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      p.amount.toPeso,
+                      style: GoogleFonts.jetBrainsMono(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    StatusChip.paymentStatus(p.status.value, small: true),
+                  ],
+                ),
+                if (p.status.value == 'pending') ...[
+                  const SizedBox(width: 8),
+                  _PaymentActions(paymentId: p.id),
+                ],
+              ],
+            ),
+            if (p.referenceNumber != null ||
+                p.notes != null ||
+                p.rejectionReason != null ||
+                p.verifiedAt != null) ...[
+              const Divider(height: 20),
+              Wrap(
+                spacing: 24,
+                runSpacing: 6,
+                children: [
+                  if (p.referenceNumber != null)
+                    _Detail('Ref #', p.referenceNumber!, subColor),
+                  if (p.notes != null) _Detail('Notes', p.notes!, subColor),
+                  if (p.verifiedAt != null)
+                    _Detail('Verified', p.verifiedAt!.toDisplayDate, subColor),
+                  if (p.rejectionReason != null)
+                    _Detail('Rejected', p.rejectionReason!, AppColors.error),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Detail extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? color;
+  const _Detail(this.label, this.value, [this.color]);
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        style: DefaultTextStyle.of(context).style.copyWith(fontSize: 12),
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          TextSpan(text: value, style: TextStyle(color: color)),
+        ],
+      ),
     );
   }
 }
@@ -237,7 +291,8 @@ class _PaymentActionsState extends ConsumerState<_PaymentActions> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
+          icon:
+              const Icon(Icons.check_circle_outline, color: AppColors.success),
           onPressed: _verify,
           tooltip: 'Verify',
         ),
