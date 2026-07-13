@@ -7,7 +7,7 @@
 // rejected before it reached the edge function handler.
 
 export const corsHeaders = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin':  'https://jireta-lms.vercel.app',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type, ' +
     'x-upsert, cache-control, accept, accept-encoding, ' +
