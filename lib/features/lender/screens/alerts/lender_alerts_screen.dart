@@ -16,7 +16,6 @@ import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
-import '../../data/lender_repository.dart';
 import '../../providers/lender_providers.dart';
 
 class LenderAlertsScreen extends ConsumerWidget {
@@ -45,14 +44,14 @@ class LenderAlertsScreen extends ConsumerWidget {
                         true
                     ? TextButton(
                         onPressed: () async {
-                          await LenderRepository()
+                          await ref
+                              .read(lenderRepositoryProvider)
                               .markAllNotificationsRead();
                           ref.invalidate(lenderNotificationsProvider);
                         },
                         child: const Text('Mark all read',
                             style: TextStyle(
-                                color: AppColors.lenderAccent,
-                                fontSize: 13)),
+                                color: AppColors.lenderAccent, fontSize: 13)),
                       )
                     : const SizedBox.shrink(),
               ],
@@ -85,7 +84,8 @@ class LenderAlertsScreen extends ConsumerWidget {
                     notif: notifs[i],
                     onTap: () async {
                       if (!notifs[i].isRead) {
-                        await LenderRepository()
+                        await ref
+                            .read(lenderRepositoryProvider)
                             .markNotificationRead(notifs[i].id);
                         ref.invalidate(lenderNotificationsProvider);
                       }
@@ -183,9 +183,8 @@ class _NotifCard extends StatelessWidget {
                       notif.title,
                       style: TextStyle(
                           color: Colors.white,
-                          fontWeight: notif.isRead
-                              ? FontWeight.w400
-                              : FontWeight.w600,
+                          fontWeight:
+                              notif.isRead ? FontWeight.w400 : FontWeight.w600,
                           fontSize: 14),
                     )),
                     if (!notif.isRead)

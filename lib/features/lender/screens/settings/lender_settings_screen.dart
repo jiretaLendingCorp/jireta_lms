@@ -72,7 +72,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    final err = await AuthRepository().updateProfile({
+    final err = await ref.read(authRepositoryProvider).updateProfile({
       'first_name': _firstCtrl.text.trim(),
       'last_name': _lastCtrl.text.trim(),
       'phone': _phoneCtrl.text.trim(),

@@ -15,6 +15,7 @@ import '../../../../shared/models/loan_model.dart';
 import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../providers/lender_providers.dart';
 
@@ -66,7 +67,7 @@ class LenderHomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              error: (e, _) => _GlassContainer(
+              error: (e, _) => GlassCard(
                 child: Text(
                   'Unable to load loans: $e',
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
@@ -108,47 +109,6 @@ class LenderHomeScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-}
-
-// ── Glassmorphism helper container ────────────────────────────────────────────
-
-class _GlassContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final VoidCallback? onTap;
-  const _GlassContainer({required this.child, this.padding, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final card = ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: double.infinity,
-          padding: padding ?? const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.22),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-    );
-    if (onTap != null) return GestureDetector(onTap: onTap, child: card);
-    return card;
   }
 }
 
@@ -226,7 +186,7 @@ class _KycBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPending = status == 'pending' || status == 'under_review';
-    return _GlassContainer(
+    return GlassCard(
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
@@ -289,7 +249,7 @@ class _ActiveLoanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassContainer(
+    return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -383,7 +343,7 @@ class _PendingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassContainer(
+    return GlassCard(
       onTap: () => context.go(RouteConstants.lenderLoans),
       child: Row(
         children: [
@@ -428,7 +388,7 @@ class _PendingCard extends StatelessWidget {
 class _NoLoanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return _GlassContainer(
+    return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -558,7 +518,7 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassContainer(
+    return GlassCard(
       onTap: onTap,
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       child: Column(
@@ -597,7 +557,7 @@ class _LifetimeStats extends ConsumerWidget {
         if ((stats['total_loans'] as int? ?? 0) == 0) {
           return const SizedBox.shrink();
         }
-        return _GlassContainer(
+        return GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

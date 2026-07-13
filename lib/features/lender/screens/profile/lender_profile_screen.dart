@@ -92,7 +92,8 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
     final bytes = await file.readAsBytes();
     final name = file.name.isNotEmpty ? file.name : file.path;
     final ext = _sanitizeExt(name.split('.').last);
-    final err = await AuthRepository().uploadAvatar(userId, bytes, ext);
+    final err =
+        await ref.read(authRepositoryProvider).uploadAvatar(userId, bytes, ext);
     if (mounted) {
       setState(() => _uploadingAvatar = false);
       context.showSnack(err ?? 'Profile photo updated', isError: err != null);
@@ -154,7 +155,7 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
       return;
     }
     setState(() => _saving = true);
-    final err = await AuthRepository().updateProfile({
+    final err = await ref.read(authRepositoryProvider).updateProfile({
       'first_name': _firstCtrl.text.trim(),
       'last_name': _lastCtrl.text.trim(),
       'phone': _phoneCtrl.text.trim(),

@@ -49,29 +49,31 @@ class LenderPayMethodsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             if (activeLoan == null)
-              WhiteCard(
+              GlassCard(
                 child: Column(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF3F4F6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.info_outline_rounded,
-                          color: Color(0xFF9CA3AF), size: 32),
+                      child: Icon(Icons.info_outline_rounded,
+                          color: Colors.white.withValues(alpha: 0.6), size: 32),
                     ),
                     const SizedBox(height: 12),
                     const Text('No Active Loan',
                         style: TextStyle(
-                            color: Color(0xFF1F2937),
+                            color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'You need an active loan to make a payment.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 13),
                     ),
                     const SizedBox(height: 16),
                     AppButton(
@@ -94,9 +96,10 @@ class LenderPayMethodsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                error: (e, _) => WhiteCard(
+                error: (e, _) => GlassCard(
                   child: Text('Unable to load payment methods: $e',
-                      style: const TextStyle(color: Color(0xFF6B7280))),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6))),
                 ),
                 data: (methods) => Column(
                   children: methods
@@ -125,7 +128,7 @@ class _PayMethodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WhiteCard(
+    return GlassCard(
       onTap: () =>
           context.go('/lender/pay/$loanId?method=${method.method.name}'),
       child: Row(
@@ -146,18 +149,19 @@ class _PayMethodCard extends StatelessWidget {
               children: [
                 Text(method.displayName,
                     style: const TextStyle(
-                        color: Color(0xFF1F2937),
+                        color: Colors.white,
                         fontWeight: FontWeight.w600,
                         fontSize: 15)),
                 if (method.description != null)
                   Text(method.description!,
-                      style: const TextStyle(
-                          color: Color(0xFF9CA3AF), fontSize: 12)),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 12)),
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_ios_rounded,
-              color: Color(0xFFD1D5DB), size: 15),
+          Icon(Icons.arrow_forward_ios_rounded,
+              color: Colors.white.withValues(alpha: 0.3), size: 15),
         ],
       ),
     );
