@@ -105,10 +105,26 @@ export function errorResponse(
       { status: error.status, headers: corsHeaders },
     );
   }
-  const msg = error instanceof Error ? error.message : String(error);
-  console.error('[errorResponse] Unhandled error:', msg);
+
+  // PostgREST / Supabase SDK errors are plain objects shaped like:
+  //   { code: 'PGRST204', message: '...', details: null, hint: null }
+  // They are NOT instances of Error, so `String(error)` returns "[object Object]".
+  // Serialize them properly so logs and clients see the real message.
+  let msg: string;
+  let code: string | undefined;
+  if (error instanceof Error) {
+    msg = error.message;
+  } else if (typeof error === 'object' && error !== null) {
+    const e = error as Record<string, unknown>;
+    msg  = typeof e.message === 'string' ? e.message : JSON.stringify(error);
+    code = typeof e.code === 'string' ? e.code : undefined;
+  } else {
+    msg = String(error);
+  }
+
+  console.error('[errorResponse] Unhandled error:', code ? `${code}: ${msg}` : msg);
   return Response.json(
-    { error: 'Internal server error', detail: msg },
+    { error: 'Internal server error', detail: msg, ...(code ? { code } : {}) },
     { status: 500, headers: corsHeaders },
   );
 }

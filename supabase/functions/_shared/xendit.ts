@@ -121,9 +121,19 @@ export async function getDisbursement(disbursementId: string): Promise<XenditDis
 
 export function verifyWebhookToken(req: Request): boolean {
   const token = Deno.env.get('XENDIT_WEBHOOK_TOKEN');
+  // If no webhook token is configured, reject everything — do NOT silently
+  // accept (that would let anyone forge a webhook).
   if (!token) return false;
-  const incoming = req.headers.get('x-callback-token');
-  return incoming === token;
+  const incoming = req.headers.get('x-callback-token') ?? '';
+
+  // Constant-time comparison to prevent timing-attack token recovery.
+  // `===` returns false on the first byte mismatch, leaking the prefix length.
+  if (incoming.length !== token.length) return false;
+  let diff = 0;
+  for (let i = 0; i < token.length; i++) {
+    diff |= incoming.charCodeAt(i) ^ token.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 export function mapMethodToXendit(method: string): XenditPaymentMethod[] {

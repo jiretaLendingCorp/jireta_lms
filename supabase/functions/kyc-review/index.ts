@@ -153,10 +153,19 @@ Deno.serve(async (req: Request) => {
       if (kyc.status === 'approved') {
         return Response.json({ error: 'KYC is already approved' }, { status: 400, headers: corsHeaders });
       }
+      if (kyc.status === 'rejected') {
+        return Response.json({ error: 'Cannot approve a previously rejected KYC. Ask lender to resubmit.' }, { status: 400, headers: corsHeaders });
+      }
 
+      // Schema column is `reviewed_by_id` (see 01_schema.sql line 87), NOT `reviewed_by`.
+      // Using the wrong name caused PGRST204 "Could not find the 'reviewed_by' column".
       const { error: updateErr } = await svc
         .from('kyc_submissions')
-        .update({ status: 'approved', reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+        .update({
+          status:         'approved',
+          reviewed_by_id: user.id,
+          reviewed_at:    new Date().toISOString(),
+        })
         .eq('id', kyc_id);
 
       if (updateErr) throw updateErr;
@@ -209,12 +218,13 @@ Deno.serve(async (req: Request) => {
 
       if (kycErr || !kyc) throw kycErr ?? new Error('KYC not found');
 
+      // Schema column is `reviewed_by_id`, NOT `reviewed_by`.
       const { error: updateErr } = await svc
         .from('kyc_submissions')
         .update({
           status:           'rejected',
           rejection_reason: reason.trim(),
-          reviewed_by:      user.id,
+          reviewed_by_id:   user.id,
           reviewed_at:      new Date().toISOString(),
         })
         .eq('id', kyc_id);

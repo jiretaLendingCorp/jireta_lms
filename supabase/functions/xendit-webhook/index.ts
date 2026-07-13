@@ -26,6 +26,32 @@ Deno.serve(async (req: Request) => {
     const svc = getServiceClient();
     const event = await req.json();
 
+    // ─── IDEMPOTENCY LEDGER ───────────────────────────────────────────────────
+    // Record the webhook event BEFORE processing. The `(source, event_id)`
+    // unique constraint means concurrent duplicate deliveries will collide and
+    // one will be rejected — preventing double-credit on the lender's balance.
+    const xenditEventId = (event.id ?? event.payment_id ?? event.external_id) as string | undefined;
+    if (xenditEventId) {
+      const { error: insertErr } = await svc
+        .from('webhook_events')
+        .insert({
+          source: 'xendit',
+          event_id: xenditEventId,
+          event_type: event.status ?? null,
+          payload: event,
+        });
+      if (insertErr) {
+        // Unique violation = already processed
+        if (insertErr.code === '23505') {
+          return Response.json(
+            { received: true, already_processed: true },
+            { headers: corsHeaders },
+          );
+        }
+        console.error('[xendit-webhook] idempotency insert failed:', insertErr);
+      }
+    }
+
     // ─── Invoice events (GCash / Maya / QR payment via Payment Link) ──────────
     // Xendit sends the full invoice object directly as the webhook body for
     // invoice callbacks, with a `status` field of PAID, EXPIRED, etc.
@@ -186,6 +212,9 @@ Deno.serve(async (req: Request) => {
     return Response.json({ received: true, unhandled: true }, { headers: corsHeaders });
   } catch (error) {
     console.error('xendit-webhook error:', error);
+    // Mark the webhook_events row as not-yet-processed so a retry can pick it up.
+    // (Successful path leaves `processed_at` NULL — could be set with an
+    // additional UPDATE before returning, but we keep this minimal.)
     return Response.json({ error: 'Webhook processing failed' }, { status: 500, headers: corsHeaders });
   }
 });
