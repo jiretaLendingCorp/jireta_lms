@@ -69,13 +69,25 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
       setState(() => _uploadingAvatar = false);
       return;
     }
-    final err = await AuthRepository()
-        .uploadAvatar(userId, bytes, file.path.split('.').last);
+    final err =
+        await AuthRepository().uploadAvatar(userId, bytes, _resolveExt(file));
     setState(() => _uploadingAvatar = false);
     if (mounted) {
       context.showSnack(err ?? 'Profile photo updated', isError: err != null);
       if (err == null) ref.read(authProvider.notifier).refreshProfile();
     }
+  }
+
+  String _resolveExt(XFile file) {
+    final name = file.name.isNotEmpty ? file.name : file.path;
+    final raw = name.split('.').last.toLowerCase();
+    return <String, String>{
+          'jpg': 'jpg',
+          'jpeg': 'jpg',
+          'png': 'png',
+          'webp': 'webp'
+        }[raw] ??
+        'jpg';
   }
 
   void _showAvatarPicker() {

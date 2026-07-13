@@ -3,6 +3,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/lender_repository.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/realtime_providers.dart';
 import '../../../shared/models/loan_model.dart';
 import '../../../shared/models/payment_model.dart';
 import '../../../shared/models/kyc_model.dart';
@@ -15,6 +16,7 @@ final lenderRepositoryProvider =
 final lenderMyLoansProvider = FutureProvider<List<LoanModel>>((ref) async {
   final userId = ref.watch(sessionUserIdProvider);
   if (userId == null) return [];
+  ref.watch(realtimeLoansStreamProvider);
   final res = await ref.read(lenderRepositoryProvider).listMyLoans();
   if (res.success) return res.data!;
   throw Exception(res.error);
@@ -23,6 +25,7 @@ final lenderMyLoansProvider = FutureProvider<List<LoanModel>>((ref) async {
 final lenderLoanDetailProvider = FutureProvider.family<LoanModel, String>(
   (ref, id) async {
     ref.watch(sessionUserIdProvider);
+    ref.watch(realtimeLoansStreamProvider);
     final res = await ref.read(lenderRepositoryProvider).getLoan(id);
     if (res.success) return res.data!;
     throw Exception(res.error);
@@ -33,6 +36,7 @@ final lenderScheduleProvider =
     FutureProvider.family<List<LoanSchedule>, String>(
   (ref, loanId) async {
     ref.watch(sessionUserIdProvider);
+    ref.watch(realtimePaymentsStreamProvider);
     final res = await ref.read(lenderRepositoryProvider).getSchedule(loanId);
     if (res.success) return res.data!;
     throw Exception(res.error);
@@ -43,6 +47,7 @@ final lenderPaymentHistoryProvider =
     FutureProvider.family<List<PaymentModel>, String>(
   (ref, loanId) async {
     ref.watch(sessionUserIdProvider);
+    ref.watch(realtimePaymentsStreamProvider);
     final res =
         await ref.read(lenderRepositoryProvider).getPaymentHistory(loanId);
     if (res.success) return res.data!;
@@ -62,6 +67,7 @@ final lenderPaymentMethodsProvider =
 final lenderMyKycProvider = FutureProvider<KycModel?>((ref) async {
   final userId = ref.watch(sessionUserIdProvider);
   if (userId == null) return null;
+  ref.watch(realtimeKycStreamProvider);
   final res = await ref.read(lenderRepositoryProvider).getMyKyc();
   if (res.success) return res.data;
   throw Exception(res.error);
@@ -71,6 +77,7 @@ final lenderNotificationsProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
   final userId = ref.watch(sessionUserIdProvider);
   if (userId == null) return [];
+  ref.watch(realtimeNotificationsStreamProvider);
   final res = await ref.read(lenderRepositoryProvider).listNotifications();
   if (res.success) return res.data!;
   throw Exception(res.error);
@@ -99,6 +106,7 @@ final lenderLifetimeStatsProvider =
 
 final lenderLoanTermTiersProvider =
     FutureProvider<List<LoanTermTierModel>>((ref) async {
+  ref.watch(realtimeTiersStreamProvider);
   final res = await ref.read(lenderRepositoryProvider).getLoanTermTiers();
   if (res.success) return res.data!;
   throw Exception(res.error);

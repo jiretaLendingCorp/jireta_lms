@@ -3,6 +3,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/hm_repository.dart';
 import '../../../core/providers/realtime_providers.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared/models/loan_model.dart';
 import '../../../shared/models/app_user.dart';
 import '../../../shared/models/payment_model.dart';
@@ -17,6 +18,7 @@ final hmRepositoryProvider = Provider<HmRepository>((ref) => HmRepository());
 
 final hmLoansProvider = FutureProvider.family<List<LoanModel>, String?>(
   (ref, status) async {
+    ref.watch(sessionUserIdProvider);
     ref.watch(realtimeLoansStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res = await repo.listLoans(status: status == 'all' ? null : status);
@@ -159,6 +161,7 @@ final hmUserDetailProvider = FutureProvider.family<AppUser, String>(
 
 final hmPaymentsProvider = FutureProvider.family<List<PaymentModel>, String?>(
   (ref, status) async {
+    ref.watch(sessionUserIdProvider);
     ref.watch(realtimePaymentsStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res =
@@ -170,6 +173,7 @@ final hmPaymentsProvider = FutureProvider.family<List<PaymentModel>, String?>(
 
 final hmKycProvider = FutureProvider.family<List<KycModel>, String?>(
   (ref, status) async {
+    ref.watch(sessionUserIdProvider);
     ref.watch(realtimeKycStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res = await repo.listKyc(status: status == 'all' ? null : status);
@@ -181,6 +185,7 @@ final hmKycProvider = FutureProvider.family<List<KycModel>, String?>(
 final hmAssignmentsProvider =
     FutureProvider.family<List<AssignmentModel>, String?>(
   (ref, status) async {
+    ref.watch(sessionUserIdProvider);
     ref.watch(realtimeAssignmentsStreamProvider);
     final repo = ref.read(hmRepositoryProvider);
     final res =

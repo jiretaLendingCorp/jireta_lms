@@ -42,8 +42,7 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (sheetCtx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -61,16 +60,14 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                   color: Color(0xFF374151)),
               title: const Text('Camera',
                   style: TextStyle(color: Color(0xFF1F2937))),
-              onTap: () =>
-                  Navigator.pop(sheetCtx, ImageSource.camera),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined,
                   color: Color(0xFF374151)),
               title: const Text('Gallery',
                   style: TextStyle(color: Color(0xFF1F2937))),
-              onTap: () =>
-                  Navigator.pop(sheetCtx, ImageSource.gallery),
+              onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
           ],
@@ -84,7 +81,8 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
     final bytes = await file.readAsBytes();
     setState(() {
       _documentBytes = bytes;
-      _documentExt = file.path.split('.').last.toLowerCase();
+      final _name = file.name.isNotEmpty ? file.name : file.path;
+      _documentExt = _name.split('.').last.toLowerCase();
     });
   }
 
@@ -129,13 +127,12 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white),
+          icon:
+              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: () => context.pop(),
         ),
         title: const Text('Credit Investigation',
-            style: TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w700)),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       ),
       body: SafeArea(
         bottom: false,
@@ -154,8 +151,8 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppColors.riderAccent
-                                .withValues(alpha: 0.12),
+                            color:
+                                AppColors.riderAccent.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(AppIcons.shieldOk,
@@ -175,8 +172,7 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                               Text(
                                 'Visit the lender and verify their information',
                                 style: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 12),
+                                    color: Color(0xFF9CA3AF), fontSize: 12),
                               ),
                             ],
                           ),
@@ -186,20 +182,17 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                     const SizedBox(height: 16),
                     const _InstructionStep(
                         number: '1',
-                        text:
-                            'Visit the lender at their registered address'),
+                        text: 'Visit the lender at their registered address'),
                     const _InstructionStep(
                         number: '2',
-                        text:
-                            'Verify their identity and living situation'),
+                        text: 'Verify their identity and living situation'),
                     const _InstructionStep(
                         number: '3',
                         text:
                             'Take a photo of proof: house, valid ID, or signed form'),
                     const _InstructionStep(
                         number: '4',
-                        text:
-                            'Add notes about your findings then submit'),
+                        text: 'Add notes about your findings then submit'),
                   ],
                 ),
               ),
@@ -216,10 +209,9 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                             fontSize: 15,
                             fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    const Text(
-                        'Required: photo of proof of visit or CI form',
-                        style: TextStyle(
-                            color: Color(0xFF9CA3AF), fontSize: 12)),
+                    const Text('Required: photo of proof of visit or CI form',
+                        style:
+                            TextStyle(color: Color(0xFF9CA3AF), fontSize: 12)),
                     const SizedBox(height: 16),
                     GestureDetector(
                       onTap: _pickDocument,
@@ -227,20 +219,17 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                         width: double.infinity,
                         height: _documentBytes != null ? 200 : 140,
                         decoration: BoxDecoration(
-                          color: AppColors.riderAccent
-                              .withValues(alpha: 0.06),
+                          color: AppColors.riderAccent.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: _documentBytes != null
-                                ? AppColors.riderAccent
-                                    .withValues(alpha: 0.4)
+                                ? AppColors.riderAccent.withValues(alpha: 0.4)
                                 : const Color(0xFFE5E7EB),
                           ),
                         ),
                         child: _documentBytes != null
                             ? ClipRRect(
-                                borderRadius:
-                                    BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14),
                                 child: Stack(
                                   fit: StackFit.expand,
                                   children: [
@@ -250,36 +239,29 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                                       bottom: 8,
                                       right: 8,
                                       child: Container(
-                                        padding:
-                                            const EdgeInsets.all(6),
+                                        padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
                                           color: Colors.black
                                               .withValues(alpha: 0.5),
                                           borderRadius:
-                                              BorderRadius.circular(
-                                                  8),
+                                              BorderRadius.circular(8),
                                         ),
                                         child: const Icon(Icons.edit,
-                                            color: Colors.white,
-                                            size: 14),
+                                            color: Colors.white, size: 14),
                                       ),
                                     ),
                                   ],
                                 ),
                               )
                             : Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                      Icons
-                                          .add_photo_alternate_outlined,
+                                  Icon(Icons.add_photo_alternate_outlined,
                                       color: AppColors.riderAccent
                                           .withValues(alpha: 0.6),
                                       size: 36),
                                   const SizedBox(height: 10),
-                                  const Text(
-                                      'Tap to take or upload photo',
+                                  const Text('Tap to take or upload photo',
                                       style: TextStyle(
                                           color: Color(0xFF9CA3AF),
                                           fontSize: 13)),
@@ -307,8 +289,7 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
                       label: 'Your findings (optional)',
                       controller: _notesCtrl,
                       maxLines: 4,
-                      hint:
-                          'Describe what you observed during the visit...',
+                      hint: 'Describe what you observed during the visit...',
                       textCapitalization: TextCapitalization.sentences,
                     ),
                   ],
@@ -364,8 +345,8 @@ class _InstructionStep extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
               child: Text(text,
-                  style: const TextStyle(
-                      color: Color(0xFF374151), fontSize: 13))),
+                  style:
+                      const TextStyle(color: Color(0xFF374151), fontSize: 13))),
         ],
       ),
     );

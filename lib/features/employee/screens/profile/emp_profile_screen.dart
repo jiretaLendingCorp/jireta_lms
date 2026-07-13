@@ -49,6 +49,14 @@ class _EmpProfileScreenState extends ConsumerState<EmpProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
+    final userId = ref.read(authProvider).user?.id;
+    if (userId == null) {
+      if (mounted)
+        context.showSnack('Session expired. Please sign in again.',
+            isError: true);
+      return;
+    }
+
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       maxWidth: 512,
@@ -56,21 +64,33 @@ class _EmpProfileScreenState extends ConsumerState<EmpProfileScreen> {
       imageQuality: 85,
     );
     if (file == null) return;
+
     setState(() => _uploadingAvatar = true);
-    final bytes = await file.readAsBytes();
-    final ext = file.path.split('.').last.toLowerCase();
-    final userId = ref.read(authProvider).user?.id;
-    if (userId == null) return;
-    final err = await AuthRepository().uploadAvatar(userId, bytes, ext);
-    setState(() => _uploadingAvatar = false);
-    if (mounted) {
-      if (err == null) {
-        context.showSnack('Avatar updated');
-        ref.read(authProvider.notifier).refreshProfile();
-      } else {
-        context.showSnack(err, isError: true);
+
+    try {
+      final bytes = await file.readAsBytes();
+      final ext = _resolveExt(file);
+      final err = await AuthRepository().uploadAvatar(userId, bytes, ext);
+      if (mounted) {
+        if (err == null) {
+          context.showSnack('Avatar updated');
+          ref.read(authProvider.notifier).refreshProfile();
+        } else {
+          context.showSnack(err, isError: true);
+        }
       }
+    } catch (e) {
+      if (mounted) context.showSnack('Failed to upload avatar', isError: true);
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
     }
+  }
+
+  String _resolveExt(XFile file) {
+    final name = file.name.isNotEmpty ? file.name : file.path;
+    final raw = name.split('.').last.toLowerCase();
+    return {'jpg': 'jpg', 'jpeg': 'jpg', 'png': 'png', 'webp': 'webp'}[raw] ??
+        'jpg';
   }
 
   Future<void> _saveProfile() async {
@@ -94,6 +114,11 @@ class _EmpProfileScreenState extends ConsumerState<EmpProfileScreen> {
   Future<void> _changePassword() async {
     if (_newPassCtrl.text != _confirmPassCtrl.text) {
       context.showSnack('Passwords do not match', isError: true);
+      return;
+    }
+    if (_newPassCtrl.text.length < 8) {
+      context.showSnack('Password must be at least 8 characters',
+          isError: true);
       return;
     }
     setState(() => _saving = true);
@@ -142,8 +167,7 @@ class _EmpProfileScreenState extends ConsumerState<EmpProfileScreen> {
                             decoration: BoxDecoration(
                               color: AppColors.accent,
                               shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: Colors.white, width: 2),
+                              border: Border.all(color: Colors.white, width: 2),
                             ),
                             child: _uploadingAvatar
                                 ? const SizedBox(
@@ -151,8 +175,8 @@ class _EmpProfileScreenState extends ConsumerState<EmpProfileScreen> {
                                     height: 14,
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation(Colors.white)),
+                                        valueColor: AlwaysStoppedAnimation(
+                                            Colors.white)),
                                   )
                                 : const Icon(Icons.camera_alt,
                                     size: 14, color: Colors.white),
@@ -199,8 +223,7 @@ class _EmpProfileScreenState extends ConsumerState<EmpProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Edit Profile',
-                            style:
-                                Theme.of(context).textTheme.headlineLarge),
+                            style: Theme.of(context).textTheme.headlineLarge),
                         const SizedBox(height: 20),
                         Row(children: [
                           Expanded(
@@ -240,8 +263,7 @@ class _EmpProfileScreenState extends ConsumerState<EmpProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Change Password',
-                            style:
-                                Theme.of(context).textTheme.headlineLarge),
+                            style: Theme.of(context).textTheme.headlineLarge),
                         const SizedBox(height: 20),
                         AppTextField(
                             label: 'Current Password',

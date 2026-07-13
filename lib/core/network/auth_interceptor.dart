@@ -6,6 +6,8 @@ import '../constants/supabase_constants.dart';
 import '../services/connectivity_service.dart';
 
 class AuthInterceptor extends Interceptor {
+  static bool _signingOut = false;
+
   @override
   void onRequest(
     RequestOptions options,
@@ -56,12 +58,17 @@ class AuthInterceptor extends Interceptor {
     } else {
       ConnectivityService.instance.setOnline(true);
     }
-    if (err.response?.statusCode == 401) {
+
+    if (err.response?.statusCode == 401 && !_signingOut) {
       final session = Supabase.instance.client.auth.currentSession;
       if (session != null) {
-        Supabase.instance.client.auth.signOut();
+        _signingOut = true;
+        Supabase.instance.client.auth.signOut().whenComplete(() {
+          _signingOut = false;
+        });
       }
     }
+
     handler.next(err);
   }
 }

@@ -50,6 +50,14 @@ class _HmProfileScreenState extends ConsumerState<HmProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
+    final userId = ref.read(authProvider).user?.id;
+    if (userId == null) {
+      if (mounted)
+        context.showSnack('Session expired. Please sign in again.',
+            isError: true);
+      return;
+    }
+
     final picker = ImagePicker();
     final file = await picker.pickImage(
       source: ImageSource.gallery,
@@ -58,21 +66,33 @@ class _HmProfileScreenState extends ConsumerState<HmProfileScreen> {
       imageQuality: 85,
     );
     if (file == null) return;
+
     setState(() => _uploadingAvatar = true);
-    final bytes = await file.readAsBytes();
-    final ext = file.path.split('.').last.toLowerCase();
-    final userId = ref.read(authProvider).user?.id;
-    if (userId == null) return;
-    final err = await AuthRepository().uploadAvatar(userId, bytes, ext);
-    setState(() => _uploadingAvatar = false);
-    if (mounted) {
-      if (err == null) {
-        context.showSnack('Avatar updated');
-        ref.read(authProvider.notifier).refreshProfile();
-      } else {
-        context.showSnack(err, isError: true);
+
+    try {
+      final bytes = await file.readAsBytes();
+      final ext = _resolveExt(file);
+      final err = await AuthRepository().uploadAvatar(userId, bytes, ext);
+      if (mounted) {
+        if (err == null) {
+          context.showSnack('Avatar updated');
+          ref.read(authProvider.notifier).refreshProfile();
+        } else {
+          context.showSnack(err, isError: true);
+        }
       }
+    } catch (e) {
+      if (mounted) context.showSnack('Failed to upload avatar', isError: true);
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
     }
+  }
+
+  String _resolveExt(XFile file) {
+    final name = file.name.isNotEmpty ? file.name : file.path;
+    final raw = name.split('.').last.toLowerCase();
+    return {'jpg': 'jpg', 'jpeg': 'jpg', 'png': 'png', 'webp': 'webp'}[raw] ??
+        'jpg';
   }
 
   Future<void> _saveProfile() async {
@@ -99,7 +119,8 @@ class _HmProfileScreenState extends ConsumerState<HmProfileScreen> {
       return;
     }
     if (_newPassCtrl.text.length < 8) {
-      context.showSnack('Password must be at least 8 characters', isError: true);
+      context.showSnack('Password must be at least 8 characters',
+          isError: true);
       return;
     }
     setState(() => _saving = true);
@@ -169,23 +190,35 @@ class _HmProfileScreenState extends ConsumerState<HmProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(user?.fullName ?? '', style: Theme.of(context).textTheme.displaySmall, textAlign: TextAlign.center),
+                    Text(user?.fullName ?? '',
+                        style: Theme.of(context).textTheme.displaySmall,
+                        textAlign: TextAlign.center),
                     const SizedBox(height: 4),
-                    Text(user?.email ?? '', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+                    Text(user?.email ?? '',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        textAlign: TextAlign.center),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: AppColors.accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20)),
                       child: Text(
                         user?.role.value.replaceAll('_', ' ').titleCase ?? '',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accent),
                       ),
                     ),
                     const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 12),
-                    _InfoRow('Member Since', user?.createdAt.toDisplayDate ?? '-'),
-                    _InfoRow('Status', user?.isActive == true ? 'Active' : 'Inactive'),
+                    _InfoRow(
+                        'Member Since', user?.createdAt.toDisplayDate ?? '-'),
+                    _InfoRow('Status',
+                        user?.isActive == true ? 'Active' : 'Inactive'),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -202,19 +235,37 @@ class _HmProfileScreenState extends ConsumerState<HmProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Edit Profile', style: Theme.of(context).textTheme.headlineLarge),
+                        Text('Edit Profile',
+                            style: Theme.of(context).textTheme.headlineLarge),
                         const SizedBox(height: 20),
                         Row(
                           children: [
-                            Expanded(child: AppTextField(label: 'First Name', controller: _firstCtrl, textCapitalization: TextCapitalization.words)),
+                            Expanded(
+                                child: AppTextField(
+                                    label: 'First Name',
+                                    controller: _firstCtrl,
+                                    textCapitalization:
+                                        TextCapitalization.words)),
                             const SizedBox(width: 12),
-                            Expanded(child: AppTextField(label: 'Last Name', controller: _lastCtrl, textCapitalization: TextCapitalization.words)),
+                            Expanded(
+                                child: AppTextField(
+                                    label: 'Last Name',
+                                    controller: _lastCtrl,
+                                    textCapitalization:
+                                        TextCapitalization.words)),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        AppTextField(label: 'Phone', controller: _phoneCtrl, keyboardType: TextInputType.phone),
+                        AppTextField(
+                            label: 'Phone',
+                            controller: _phoneCtrl,
+                            keyboardType: TextInputType.phone),
                         const SizedBox(height: 20),
-                        AppButton(label: 'Save Profile', isLoading: _saving, onPressed: _saveProfile, width: double.infinity),
+                        AppButton(
+                            label: 'Save Profile',
+                            isLoading: _saving,
+                            onPressed: _saveProfile,
+                            width: double.infinity),
                       ],
                     ),
                   ),
@@ -226,15 +277,29 @@ class _HmProfileScreenState extends ConsumerState<HmProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Change Password', style: Theme.of(context).textTheme.headlineLarge),
+                        Text('Change Password',
+                            style: Theme.of(context).textTheme.headlineLarge),
                         const SizedBox(height: 20),
-                        AppTextField(label: 'Current Password', controller: _oldPassCtrl, obscureText: true),
+                        AppTextField(
+                            label: 'Current Password',
+                            controller: _oldPassCtrl,
+                            obscureText: true),
                         const SizedBox(height: 12),
-                        AppTextField(label: 'New Password', controller: _newPassCtrl, obscureText: true),
+                        AppTextField(
+                            label: 'New Password',
+                            controller: _newPassCtrl,
+                            obscureText: true),
                         const SizedBox(height: 12),
-                        AppTextField(label: 'Confirm New Password', controller: _confirmPassCtrl, obscureText: true),
+                        AppTextField(
+                            label: 'Confirm New Password',
+                            controller: _confirmPassCtrl,
+                            obscureText: true),
                         const SizedBox(height: 20),
-                        AppButton(label: 'Change Password', isLoading: _saving, onPressed: _changePassword, width: double.infinity),
+                        AppButton(
+                            label: 'Change Password',
+                            isLoading: _saving,
+                            onPressed: _changePassword,
+                            width: double.infinity),
                       ],
                     ),
                   ),
@@ -261,7 +326,9 @@ class _InfoRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
         ],
       ),
     );

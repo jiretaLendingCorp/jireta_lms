@@ -2,6 +2,8 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/emp_repository.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/realtime_providers.dart';
 import '../../../shared/models/loan_model.dart';
 import '../../../shared/models/payment_model.dart';
 import '../../../shared/models/kyc_model.dart';
@@ -66,6 +68,8 @@ final empRepositoryProvider = Provider<EmpRepository>((ref) => EmpRepository());
 
 final empLoansProvider = FutureProvider.family<List<LoanModel>, String?>(
   (ref, status) async {
+    ref.watch(sessionUserIdProvider);
+    ref.watch(realtimeLoansStreamProvider);
     final res = await ref.read(empRepositoryProvider).listLoans(status: status);
     if (res.success) return res.data!;
     throw Exception(res.error);
@@ -82,6 +86,7 @@ final empLoanDetailProvider = FutureProvider.family<LoanModel, String>(
 
 final empPaymentsProvider = FutureProvider.family<List<PaymentModel>, String?>(
   (ref, status) async {
+    ref.watch(realtimePaymentsStreamProvider);
     final res =
         await ref.read(empRepositoryProvider).listPayments(status: status);
     if (res.success) return res.data!;
@@ -91,6 +96,8 @@ final empPaymentsProvider = FutureProvider.family<List<PaymentModel>, String?>(
 
 final empKycProvider = FutureProvider.family<List<KycModel>, String?>(
   (ref, status) async {
+    ref.watch(sessionUserIdProvider);
+    ref.watch(realtimeKycStreamProvider);
     final res = await ref.read(empRepositoryProvider).listKyc(status: status);
     if (res.success) return res.data!;
     throw Exception(res.error);
@@ -99,6 +106,7 @@ final empKycProvider = FutureProvider.family<List<KycModel>, String?>(
 
 final empAssignmentsProvider =
     FutureProvider<List<AssignmentModel>>((ref) async {
+  ref.watch(realtimeAssignmentsStreamProvider);
   final res = await ref.read(empRepositoryProvider).listAssignments();
   if (res.success) return res.data!;
   throw Exception(res.error);
@@ -112,6 +120,8 @@ final empRidersProvider = FutureProvider<List<AppUser>>((ref) async {
 
 final empNotificationsProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
+  ref.watch(sessionUserIdProvider);
+  ref.watch(realtimeNotificationsStreamProvider);
   final res = await ref.read(empRepositoryProvider).listNotifications();
   if (res.success) return res.data!;
   throw Exception(res.error);

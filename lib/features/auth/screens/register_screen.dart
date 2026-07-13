@@ -1,12 +1,4 @@
 // lib/features/auth/screens/register_screen.dart
-//
-// FIX #1: "Sign In" link now uses context.go(RouteConstants.login) instead of
-//         context.pop() so the browser URL changes from /#/register to /#/login.
-//         context.pop() on web keeps the URL as /register while showing login UI.
-//
-// Self-registration for Lenders (borrowers). All calls go via
-// AuthNotifier.register() → Supabase Auth signUp → on_auth_user_created
-// trigger creates the users row — no direct DB writes from Flutter.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,16 +80,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (err != null) {
       context.showSnack(err, isError: true);
     } else {
-      final user = ref.read(authProvider).user;
-      if (user == null) {
-        context.showSnack(
-          'Account created! Please sign in to continue.',
-          duration: const Duration(seconds: 6),
-        );
-        // FIX: use go() so URL updates correctly
-        if (mounted) context.go(RouteConstants.login);
-      }
-      // If user is loaded, router redirect handles navigation.
+      context.showSnack(
+        'Account created successfully! Please sign in.',
+        duration: const Duration(seconds: 5),
+      );
+      context.go(RouteConstants.login);
     }
   }
 
@@ -131,8 +118,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Text('Join Jireta Loans as a borrower',
               style: TextStyle(color: subColor, fontSize: 14)),
           const SizedBox(height: 28),
-
-          // Name row
           Row(children: [
             Expanded(
                 child: _Field(
@@ -157,7 +142,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         Validators.required(v, label: 'Last name'))),
           ]),
           const SizedBox(height: 12),
-
           _Field(
               label: 'Middle Name (optional)',
               ctrl: _middleCtrl,
@@ -166,8 +150,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               textColor: bodyColor,
               textCapitalization: TextCapitalization.words),
           const SizedBox(height: 12),
-
-          // Birthday
           GestureDetector(
             onTap: _pickDate,
             child: AbsorbPointer(
@@ -187,7 +169,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
           _Field(
             label: 'Email',
             ctrl: _emailCtrl,
@@ -202,7 +183,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             validator: Validators.email,
           ),
           const SizedBox(height: 12),
-
           _Field(
             label: 'Phone (optional)',
             ctrl: _phoneCtrl,
@@ -216,7 +196,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
           ),
           const SizedBox(height: 12),
-
           _Field(
             label: 'Password',
             ctrl: _passCtrl,
@@ -241,7 +220,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             validator: Validators.password,
           ),
           const SizedBox(height: 12),
-
           _Field(
             label: 'Confirm Password',
             ctrl: _confirmCtrl,
@@ -267,8 +245,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             validator: (v) => Validators.confirmPassword(v, _passCtrl.text),
           ),
           const SizedBox(height: 20),
-
-          // Terms checkbox
           GestureDetector(
             onTap: () => setState(() => _termsAccepted = !_termsAccepted),
             child: Row(
@@ -320,7 +296,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 24),
-
           SizedBox(
             height: 50,
             child: AppButton.gradient(
@@ -332,15 +307,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 20),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('Already have an account? ',
                   style: TextStyle(fontSize: 14, color: subColor)),
               GestureDetector(
-                // FIX: was context.pop() — URL stayed on /register.
-                // context.go replaces the route so URL shows /login.
                 onTap: () => context.go(RouteConstants.login),
                 child: const Text('Sign In',
                     style: TextStyle(
@@ -354,7 +326,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
 
-    // ── Mobile layout ─────────────────────────────────────────────────────────
     if (isMobile) {
       return Scaffold(
         backgroundColor:
@@ -393,11 +364,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
     }
 
-    // ── Web layout ────────────────────────────────────────────────────────────
     return Scaffold(
       body: Row(
         children: [
-          // Left hero panel (identical to login)
           Expanded(
             child: Container(
               decoration: const BoxDecoration(
@@ -447,7 +416,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
           ),
-          // Right form panel
           Container(
             width: 520,
             color: isDark ? const Color(0xFF111827) : const Color(0xFFF3F4F6),

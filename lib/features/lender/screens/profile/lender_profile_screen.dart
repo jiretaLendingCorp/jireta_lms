@@ -90,7 +90,8 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
     if (userId == null) return;
     setState(() => _uploadingAvatar = true);
     final bytes = await file.readAsBytes();
-    final ext = _sanitizeExt(file.path.split('.').last);
+    final name = file.name.isNotEmpty ? file.name : file.path;
+    final ext = _sanitizeExt(name.split('.').last);
     final err = await AuthRepository().uploadAvatar(userId, bytes, ext);
     if (mounted) {
       setState(() => _uploadingAvatar = false);

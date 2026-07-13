@@ -3,6 +3,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/rider_repository.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/realtime_providers.dart';
 import '../../../shared/models/assignment_model.dart';
 import '../../../shared/models/notification_model.dart';
 
@@ -14,6 +15,7 @@ final riderAssignmentsProvider =
   (ref, status) async {
     final userId = ref.watch(sessionUserIdProvider);
     if (userId == null) return [];
+    ref.watch(realtimeAssignmentsStreamProvider);
     final res = await ref
         .read(riderRepositoryProvider)
         .listMyAssignments(status: status);
@@ -26,6 +28,7 @@ final riderAssignmentDetailProvider =
     FutureProvider.family<AssignmentModel, String>(
   (ref, id) async {
     ref.watch(sessionUserIdProvider);
+    ref.watch(realtimeAssignmentsStreamProvider);
     final res = await ref.read(riderRepositoryProvider).getAssignment(id);
     if (res.success) return res.data!;
     throw Exception(res.error);
@@ -35,6 +38,7 @@ final riderAssignmentDetailProvider =
 final riderStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final userId = ref.watch(sessionUserIdProvider);
   if (userId == null) return {};
+  ref.watch(realtimeAssignmentsStreamProvider);
   final res = await ref.read(riderRepositoryProvider).getMyStats();
   if (res.success) return res.data!;
   return {};
@@ -44,6 +48,7 @@ final riderNotificationsProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
   final userId = ref.watch(sessionUserIdProvider);
   if (userId == null) return [];
+  ref.watch(realtimeNotificationsStreamProvider);
   final res = await ref.read(riderRepositoryProvider).listNotifications();
   if (res.success) return res.data!;
   throw Exception(res.error);
