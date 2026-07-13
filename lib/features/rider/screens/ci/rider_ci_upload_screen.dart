@@ -81,8 +81,8 @@ class _RiderCiUploadScreenState extends ConsumerState<RiderCiUploadScreen> {
     final bytes = await file.readAsBytes();
     setState(() {
       _documentBytes = bytes;
-      final _name = file.name.isNotEmpty ? file.name : file.path;
-      _documentExt = _name.split('.').last.toLowerCase();
+      final name = file.name.isNotEmpty ? file.name : file.path;
+      _documentExt = name.split('.').last.toLowerCase();
     });
   }
 

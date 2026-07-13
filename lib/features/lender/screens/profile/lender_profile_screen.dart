@@ -341,7 +341,7 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                                 color: Colors.white.withValues(alpha: 0.6),
                                 fontSize: 12)),
                         const SizedBox(height: 6),
-                        LGlassBadge(label: 'Lender', color: _accent),
+                        const LGlassBadge(label: 'Lender', color: _accent),
                       ])),
                   LGlassStatusBadge(active: user?.isActive ?? true),
                 ]),
@@ -351,7 +351,7 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      LGlassHeader(
+                      const LGlassHeader(
                           icon: AppIcons.profile,
                           title: 'Account Info',
                           accent: _accent),
@@ -511,7 +511,7 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      LGlassHeader(
+                      const LGlassHeader(
                           icon: AppIcons.settings,
                           title: 'Appearance',
                           accent: _accent),

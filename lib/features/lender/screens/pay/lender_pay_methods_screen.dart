@@ -45,8 +45,7 @@ class LenderPayMethodsScreen extends ConsumerWidget {
             Text(
               'Choose how you want to pay your loan',
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  fontSize: 13),
+                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
             ),
             const SizedBox(height: 24),
             if (activeLoan == null)
@@ -55,8 +54,8 @@ class LenderPayMethodsScreen extends ConsumerWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3F4F6),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.info_outline_rounded,
@@ -72,16 +71,14 @@ class LenderPayMethodsScreen extends ConsumerWidget {
                     const Text(
                       'You need an active loan to make a payment.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: Color(0xFF9CA3AF), fontSize: 13),
+                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
                     ),
                     const SizedBox(height: 16),
                     AppButton(
                       label: 'Apply for a Loan',
                       color: AppColors.lenderAccent,
                       width: double.infinity,
-                      onPressed: () =>
-                          context.go(RouteConstants.lenderApply),
+                      onPressed: () => context.go(RouteConstants.lenderApply),
                     ),
                   ],
                 ),
@@ -99,8 +96,7 @@ class LenderPayMethodsScreen extends ConsumerWidget {
                 ),
                 error: (e, _) => WhiteCard(
                   child: Text('Unable to load payment methods: $e',
-                      style:
-                          const TextStyle(color: Color(0xFF6B7280))),
+                      style: const TextStyle(color: Color(0xFF6B7280))),
                 ),
                 data: (methods) => Column(
                   children: methods
@@ -130,8 +126,8 @@ class _PayMethodCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WhiteCard(
-      onTap: () => context
-          .go('/lender/pay/$loanId?method=${method.method.name}'),
+      onTap: () =>
+          context.go('/lender/pay/$loanId?method=${method.method.name}'),
       child: Row(
         children: [
           Container(

@@ -9,7 +9,6 @@
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireAuth, requireRole, getServiceClient, errorResponse } from '../_shared/auth.ts';
-import { encrypt } from '../_shared/encryption.ts';
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -63,14 +62,33 @@ Deno.serve(async (req: Request) => {
       const user = await requireAuth(req);
       const body = await req.json();
 
+      // `users` table columns that the user may self-edit.
       const allowed = ['first_name','last_name','middle_name','phone','address'] as const;
       const updates: Record<string,unknown> = { updated_at: new Date().toISOString() };
       for (const key of allowed) {
         if (body[key] !== undefined) updates[key] = body[key];
       }
 
-      if (body.employer)       updates['employer_encrypted'] = await encrypt(String(body.employer));
-      if (body.monthly_income) updates['monthly_income']     = parseFloat(body.monthly_income);
+      // BUG FIX: `employer` and `monthly_income` do NOT live on `users` —
+      // they live on `lender_info` (3NF, see 03_fixes.sql). The previous code
+      // tried to write `employer_encrypted` and `monthly_income` to `users`,
+      // which would throw a PGRST204 schema-cache error every time a lender
+      // updated their employer from the profile screen.
+      const { data: profile } = await svc
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role === 'lender' && (body.employer !== undefined || body.monthly_income !== undefined)) {
+        const lenderUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (body.employer !== undefined)      lenderUpdates.employer       = String(body.employer).trim() || null;
+        if (body.monthly_income !== undefined) lenderUpdates.monthly_income = parseFloat(body.monthly_income) || null;
+        const { error: liErr } = await svc.from('lender_info')
+          .update(lenderUpdates)
+          .eq('user_id', user.id);
+        if (liErr) throw liErr;
+      }
 
       const { error } = await svc.from('users').update(updates).eq('id', user.id);
       if (error) throw error;

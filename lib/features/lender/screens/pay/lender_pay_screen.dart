@@ -73,20 +73,17 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
       final position = await _captureLocation();
       if (!mounted) return;
 
-      final loan =
-          ref.read(lenderLoanDetailProvider(widget.id)).value;
-      final amount =
-          loan?.installmentAmount ?? loan?.outstandingBalance ?? 0;
+      final loan = ref.read(lenderLoanDetailProvider(widget.id)).value;
+      final amount = loan?.installmentAmount ?? loan?.outstandingBalance ?? 0;
 
-      final res = await ref
-          .read(lenderRepositoryProvider)
-          .requestCashCollection(
-            widget.id,
-            amount,
-            date,
-            lat: position?.latitude,
-            lng: position?.longitude,
-          );
+      final res =
+          await ref.read(lenderRepositoryProvider).requestCashCollection(
+                widget.id,
+                amount,
+                date,
+                lat: position?.latitude,
+                lng: position?.longitude,
+              );
       if (!mounted) return;
       setState(() => _paying = false);
       context.showSnack(
@@ -111,8 +108,7 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } else {
-      context.showSnack(res.error ?? 'Payment link unavailable',
-          isError: true);
+      context.showSnack(res.error ?? 'Payment link unavailable', isError: true);
     }
   }
 
@@ -148,8 +144,7 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
                       children: [
                         const Text('Outstanding Balance',
                             style: TextStyle(
-                                color: Color(0xFF9CA3AF),
-                                fontSize: 13)),
+                                color: Color(0xFF9CA3AF), fontSize: 13)),
                         const SizedBox(height: 4),
                         Text(loan.outstandingBalance.toPeso,
                             style: const TextStyle(
@@ -164,8 +159,7 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
                         children: [
                           const Text('Next installment',
                               style: TextStyle(
-                                  color: Color(0xFF9CA3AF),
-                                  fontSize: 12)),
+                                  color: Color(0xFF9CA3AF), fontSize: 12)),
                           const SizedBox(height: 4),
                           Text(loan.installmentAmount!.toPeso,
                               style: const TextStyle(
@@ -200,31 +194,26 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
                   style: const TextStyle(color: Colors.white70)),
               data: (methods) {
                 if (methods.isEmpty) {
-                  return WhiteCard(
-                    child: const Text(
+                  return const WhiteCard(
+                    child: Text(
                       'No payment methods available. Contact your loan officer.',
-                      style: TextStyle(
-                          color: Color(0xFF6B7280), fontSize: 14),
+                      style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
                     ),
                   );
                 }
                 return Column(
-                  children: methods
-                      .where((m) => m.isEnabled)
-                      .map((m) {
-                    final selected =
-                        _selectedMethod == m.method.value;
+                  children: methods.where((m) => m.isEnabled).map((m) {
+                    final selected = _selectedMethod == m.method.value;
                     return GestureDetector(
-                      onTap: () => setState(
-                          () => _selectedMethod = m.method.value),
+                      onTap: () =>
+                          setState(() => _selectedMethod = m.method.value),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: selected
-                              ? AppColors.lenderAccent
-                                  .withValues(alpha: 0.08)
+                              ? AppColors.lenderAccent.withValues(alpha: 0.08)
                               : Colors.white,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
@@ -235,8 +224,7 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color:
-                                  Colors.black.withValues(alpha: 0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -251,8 +239,7 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
                                         ? AppColors.lenderAccent
                                         : const Color(0xFF9CA3AF))
                                     .withValues(alpha: 0.12),
-                                borderRadius:
-                                    BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(_iconFor(m.method),
                                   color: selected
@@ -263,8 +250,7 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
                             const SizedBox(width: 14),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(m.displayName,
                                       style: TextStyle(
@@ -282,15 +268,11 @@ class _LenderPayScreenState extends ConsumerState<LenderPayScreen> {
                               ),
                             ),
                             if (selected)
-                              const Icon(
-                                  Icons.check_circle_rounded,
-                                  color: AppColors.lenderAccent,
-                                  size: 20)
+                              const Icon(Icons.check_circle_rounded,
+                                  color: AppColors.lenderAccent, size: 20)
                             else
-                              const Icon(
-                                  Icons.radio_button_unchecked,
-                                  color: Color(0xFFD1D5DB),
-                                  size: 20),
+                              const Icon(Icons.radio_button_unchecked,
+                                  color: Color(0xFFD1D5DB), size: 20),
                           ],
                         ),
                       ),

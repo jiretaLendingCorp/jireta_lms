@@ -52,9 +52,10 @@ class _HmProfileScreenState extends ConsumerState<HmProfileScreen> {
   Future<void> _pickAvatar() async {
     final userId = ref.read(authProvider).user?.id;
     if (userId == null) {
-      if (mounted)
+      if (mounted) {
         context.showSnack('Session expired. Please sign in again.',
             isError: true);
+      }
       return;
     }
 

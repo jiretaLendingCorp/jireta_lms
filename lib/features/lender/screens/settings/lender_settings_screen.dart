@@ -163,7 +163,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
                               fontSize: 12),
                         ),
                         const SizedBox(height: 6),
-                        _LGlassBadge(label: 'Lender', color: accent),
+                        const _LGlassBadge(label: 'Lender', color: accent),
                       ],
                     ),
                   ),
@@ -179,8 +179,8 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
               title: 'Edit Profile',
               expanded: _editProfileExpanded,
               accent: accent,
-              onToggle: () => setState(
-                  () => _editProfileExpanded = !_editProfileExpanded),
+              onToggle: () =>
+                  setState(() => _editProfileExpanded = !_editProfileExpanded),
               child: Column(
                 children: [
                   const SizedBox(height: 16),
@@ -192,9 +192,8 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
                           controller: _firstCtrl,
                           isGlass: true,
                           textCapitalization: TextCapitalization.words,
-                          validator: (v) => v == null || v.isEmpty
-                              ? 'Required'
-                              : null,
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Required' : null,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -204,9 +203,8 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
                           controller: _lastCtrl,
                           isGlass: true,
                           textCapitalization: TextCapitalization.words,
-                          validator: (v) => v == null || v.isEmpty
-                              ? 'Required'
-                              : null,
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Required' : null,
                         ),
                       ),
                     ],
@@ -298,8 +296,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
               title: 'Notification Preferences',
               expanded: _notifExpanded,
               accent: accent,
-              onToggle: () =>
-                  setState(() => _notifExpanded = !_notifExpanded),
+              onToggle: () => setState(() => _notifExpanded = !_notifExpanded),
               child: Column(
                 children: [
                   const SizedBox(height: 8),
@@ -339,7 +336,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _LGlassHeader(
+                  const _LGlassHeader(
                       icon: AppIcons.settings,
                       title: 'Appearance',
                       accent: accent),
@@ -400,7 +397,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _LGlassHeader(
+                  const _LGlassHeader(
                       icon: AppIcons.profile,
                       title: 'Account Info',
                       accent: accent),
@@ -411,8 +408,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
                   const SizedBox(height: 6),
                   _LGlassInfoRow(
                     label: 'Status',
-                    value:
-                        user?.isActive == true ? 'Active' : 'Inactive',
+                    value: user?.isActive == true ? 'Active' : 'Inactive',
                     valueColor: user?.isActive == true
                         ? AppColors.success
                         : AppColors.error,
@@ -420,8 +416,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
                   const SizedBox(height: 6),
                   _LGlassInfoRow(
                       label: 'User ID',
-                      value:
-                          user?.id.substring(0, 8).toUpperCase() ?? '—'),
+                      value: user?.id.substring(0, 8).toUpperCase() ?? '—'),
                 ],
               ),
             ),
@@ -431,14 +426,12 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () =>
-                    ref.read(authProvider.notifier).signOut(),
+                onPressed: () => ref.read(authProvider.notifier).signOut(),
                 icon: const Icon(AppIcons.logout,
                     color: AppColors.error, size: 18),
                 label: const Text('Sign Out',
                     style: TextStyle(
-                        color: AppColors.error,
-                        fontWeight: FontWeight.w600)),
+                        color: AppColors.error, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.error),
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -506,8 +499,7 @@ class _LGlassCollapsibleSection extends StatelessWidget {
                     turns: expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white.withValues(alpha: 0.5),
-                        size: 22),
+                        color: Colors.white.withValues(alpha: 0.5), size: 22),
                   ),
                 ],
               ),
@@ -521,8 +513,7 @@ class _LGlassCollapsibleSection extends StatelessWidget {
               curve: Curves.easeInOut,
               child: expanded
                   ? Padding(
-                      padding:
-                          const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       child: child,
                     )
                   : const SizedBox.shrink(),
@@ -663,9 +654,7 @@ class _LGlassTapTile extends StatelessWidget {
 class _LGlassDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Divider(
-      height: 1,
-      indent: 50,
-      color: Colors.white.withValues(alpha: 0.08));
+      height: 1, indent: 50, color: Colors.white.withValues(alpha: 0.08));
 }
 
 class _LGlassInfoRow extends StatelessWidget {

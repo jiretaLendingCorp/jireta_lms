@@ -223,8 +223,9 @@ class _LifetimeStats extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (s) {
-        if ((s['total_assignments'] as int? ?? 0) == 0)
+        if ((s['total_assignments'] as int? ?? 0) == 0) {
           return const SizedBox.shrink();
+        }
         return _GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

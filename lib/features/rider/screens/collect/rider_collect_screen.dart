@@ -67,8 +67,8 @@ class _RiderCollectScreenState extends ConsumerState<RiderCollectScreen> {
     final bytes = await file.readAsBytes();
     setState(() {
       _receiptBytes = bytes;
-      final _name = file.name.isNotEmpty ? file.name : file.path;
-      _receiptExt = _name.split('.').last.toLowerCase();
+      final name = file.name.isNotEmpty ? file.name : file.path;
+      _receiptExt = name.split('.').last.toLowerCase();
     });
   }
 

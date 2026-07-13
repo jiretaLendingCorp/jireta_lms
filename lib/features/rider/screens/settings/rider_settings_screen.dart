@@ -103,8 +103,8 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
     if (userId == null) return;
     setState(() => _uploadingAvatar = true);
     final bytes = await file.readAsBytes();
-    final _fname = file.name.isNotEmpty ? file.name : file.path;
-    final ext = _cleanExt(_fname.split('.').last);
+    final fname = file.name.isNotEmpty ? file.name : file.path;
+    final ext = _cleanExt(fname.split('.').last);
     final err = await AuthRepository().uploadAvatar(userId, bytes, ext);
     if (mounted) {
       setState(() => _uploadingAvatar = false);

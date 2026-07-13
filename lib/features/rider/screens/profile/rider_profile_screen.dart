@@ -230,7 +230,7 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
                       fontSize: 13)),
               const SizedBox(height: 6),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _Badge('Rider', AppColors.riderAccent),
+                const _Badge('Rider', AppColors.riderAccent),
                 const SizedBox(width: 8),
                 _Badge(user?.isActive == true ? 'Active' : 'Inactive',
                     user?.isActive == true ? Colors.green : Colors.red),

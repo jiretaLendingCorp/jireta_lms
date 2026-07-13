@@ -601,11 +601,11 @@ class _LifetimeStats extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
                   Icon(Icons.bar_chart_rounded, color: _accent, size: 18),
-                  const SizedBox(width: 8),
-                  const Text('Lifetime Summary',
+                  SizedBox(width: 8),
+                  Text('Lifetime Summary',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 15,

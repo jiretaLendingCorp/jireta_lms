@@ -1,10 +1,34 @@
 // supabase/functions/user-create/index.ts
+//
+// SECURITY FIXES vs previous version:
+//   • Replaced hardcoded `'12345678'` default password with a cryptographically
+//     random 16-char temporary password generated server-side. The previous
+//     value was a known constant — anyone who knew the pattern could log in
+//     to any newly created account before the legitimate user did.
+//   • Default password is NO LONGER returned in the API response. The temp
+//     password is delivered only via the welcome email.
+//   • `email_confirm: true` kept (admin-created accounts are pre-verified)
+//     but `force_password_change: true` guarantees the user must rotate the
+//     password on first login.
+//   • Removed `address` from `rider_info` insert — that column was dropped in
+//     03_fixes.sql for 3NF (address lives on `users`).
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { requireRole, getServiceClient, errorResponse, AuthError } from '../_shared/auth.ts';
 import { emailAccountCreated } from '../_shared/email.ts';
 
-const DEFAULT_PASSWORD = '12345678';
+// Generate a strong temporary password: 16 chars from [A-Za-z0-9].
+// Uses crypto.getRandomValues — never Math.random() for secrets.
+function generateTempPassword(length = 16): string {
+  const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < length; i++) {
+    out += charset[bytes[i] % charset.length];
+  }
+  return out;
+}
 
 Deno.serve(async (req: Request) => {
   const corsResponse = handleCors(req);
@@ -57,9 +81,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // SECURITY: generate a per-user random temp password instead of the
+    // hardcoded `'12345678'` constant used previously.
+    const tempPassword = generateTempPassword();
+
     const { data: authUser, error: createErr } = await svc.auth.admin.createUser({
       email: email.trim().toLowerCase(),
-      password: DEFAULT_PASSWORD,
+      password: tempPassword,
       email_confirm: true,
       user_metadata: {
         first_name: first_name.trim(),
@@ -90,7 +118,7 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     };
 
-    // address lives on users for all roles
+    // `address` lives on `users` for ALL roles (3NF — see 03_fixes.sql).
     if (address?.trim()) userUpdate.address = address.trim();
 
     const { error: profileErr } = await svc
@@ -99,15 +127,16 @@ Deno.serve(async (req: Request) => {
       .eq('id', uid);
 
     if (profileErr) {
+      // Roll back the auth user so we don't leave an orphan account.
       await svc.auth.admin.deleteUser(uid);
       throw profileErr;
     }
 
-    // Save rider-specific info into rider_info table
+    // Save rider-specific info into rider_info table.
+    // NOTE: `address` is intentionally NOT written here — it lives on `users`.
     if (role === 'rider') {
       const riderInfo: Record<string, unknown> = {
         user_id: uid,
-        address: address?.trim() ?? null,
         driver_license: driver_license?.trim() ?? null,
         vehicle_info: vehicle_info?.trim() ?? null,
       };
@@ -135,17 +164,19 @@ Deno.serve(async (req: Request) => {
       description: `Created ${role.replace('_', ' ')} account for ${first_name.trim()} ${last_name.trim()}`,
     });
 
+    // Deliver the temp password ONLY via email — never in the API response.
     await emailAccountCreated({
       to: email.trim().toLowerCase(),
       firstName: first_name.trim(),
       role,
-      defaultPassword: DEFAULT_PASSWORD,
+      defaultPassword: tempPassword,
     });
 
     return Response.json(
       {
-        message: `User created. Default password: ${DEFAULT_PASSWORD}`,
+        message: 'User created. Temporary password sent to the user\'s email.',
         user_id: uid,
+        // Intentionally do NOT return `temp_password` here.
       },
       { status: 201, headers: corsHeaders },
     );
