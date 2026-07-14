@@ -1,4 +1,11 @@
 // lib/shared/widgets/app_button.dart
+//
+// Premium Material 3 styled button kit:
+//   • AppButton          — filled / outlined / gradient / danger variants
+//   • AppTextButton      — minimal text link button
+//
+// All variants use 12–14px corner radius, smooth press animations,
+// haptic feedback on tap, and animated loading state.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +31,7 @@ class AppButton extends StatelessWidget {
   final AppButtonSize size;
   final bool useGradient;
   final List<Color>? gradientColors;
+  final double? borderRadius;
 
   const AppButton({
     super.key,
@@ -42,6 +50,7 @@ class AppButton extends StatelessWidget {
     this.size = AppButtonSize.md,
     this.useGradient = false,
     this.gradientColors,
+    this.borderRadius,
   });
 
   factory AppButton.gradient({
@@ -52,7 +61,14 @@ class AppButton extends StatelessWidget {
     IconData? icon,
     double? width,
     AppButtonSize size = AppButtonSize.md,
+    List<Color>? gradientColors,
+    Color? color,
+    Color? textColor,
   }) {
+    // If a single `color` is provided, derive a two-tone gradient from it.
+    final base = color ?? AppColors.accent;
+    final dark = Color.lerp(base, Colors.black, 0.18) ?? AppColors.accentDark;
+    final effectiveGradient = gradientColors ?? [base, dark];
     return AppButton(
       key: key,
       label: label,
@@ -62,7 +78,9 @@ class AppButton extends StatelessWidget {
       width: width,
       size: size,
       useGradient: true,
-      gradientColors: const [AppColors.accent, AppColors.accentDark],
+      gradientColors: effectiveGradient,
+      color: color,
+      textColor: textColor,
     );
   }
 
@@ -87,14 +105,13 @@ class AppButton extends StatelessWidget {
     );
   }
 
-  // Padding based on size
   EdgeInsets get _effectivePadding {
     if (padding != null) return padding as EdgeInsets;
     switch (size) {
       case AppButtonSize.sm:
-        return const EdgeInsets.symmetric(horizontal: 14, vertical: 9);
+        return const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
       case AppButtonSize.md:
-        return const EdgeInsets.symmetric(horizontal: 20, vertical: 13);
+        return const EdgeInsets.symmetric(horizontal: 22, vertical: 14);
       case AppButtonSize.lg:
         return const EdgeInsets.symmetric(horizontal: 28, vertical: 17);
     }
@@ -134,6 +151,8 @@ class AppButton extends StatelessWidget {
     }
   }
 
+  double get _radius => borderRadius ?? 12;
+
   @override
   Widget build(BuildContext context) {
     final effectiveColor =
@@ -166,6 +185,7 @@ class AppButton extends StatelessWidget {
               fontSize: _effectiveFontSize,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.1,
+              height: 1.2,
             ),
           ),
           if (trailingIcon != null) ...[
@@ -188,10 +208,11 @@ class AppButton extends StatelessWidget {
                 },
           style: OutlinedButton.styleFrom(
             foregroundColor: effectiveColor,
-            side: BorderSide(color: effectiveColor),
+            disabledForegroundColor: effectiveColor.withValues(alpha: 0.4),
+            side: BorderSide(color: effectiveColor.withValues(alpha: 0.6)),
             padding: _effectivePadding,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(_radius),
             ),
           ),
           child: child,
@@ -207,17 +228,21 @@ class AppButton extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: onPressed == null || isLoading
                 ? null
-                : LinearGradient(colors: colors),
+                : LinearGradient(
+                    colors: colors,
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
             color: onPressed == null || isLoading
                 ? effectiveColor.withValues(alpha: 0.5)
                 : null,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(_radius),
             boxShadow: onPressed != null && !isLoading
                 ? [
                     BoxShadow(
-                      color: colors.first.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: colors.first.withValues(alpha: 0.32),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
                     ),
                   ]
                 : null,
@@ -232,11 +257,14 @@ class AppButton extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
               foregroundColor: effectiveTextColor,
+              disabledBackgroundColor: Colors.transparent,
+              disabledForegroundColor:
+                  effectiveTextColor.withValues(alpha: 0.6),
               elevation: 0,
               shadowColor: Colors.transparent,
               padding: _effectivePadding,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(_radius),
               ),
             ),
             child: child,
@@ -258,11 +286,12 @@ class AppButton extends StatelessWidget {
           backgroundColor: effectiveColor,
           foregroundColor: effectiveTextColor,
           disabledBackgroundColor: effectiveColor.withValues(alpha: 0.45),
+          disabledForegroundColor: effectiveTextColor.withValues(alpha: 0.7),
           elevation: 0,
           shadowColor: Colors.transparent,
           padding: _effectivePadding,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(_radius),
           ),
         ),
         child: child,
@@ -298,6 +327,9 @@ class AppTextButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -312,6 +344,7 @@ class AppTextButton extends StatelessWidget {
               color: color ?? AppColors.accent,
               fontSize: fontSize ?? 14,
               fontWeight: fontWeight ?? FontWeight.w600,
+              height: 1.2,
             ),
           ),
         ],

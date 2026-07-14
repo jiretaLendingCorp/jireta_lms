@@ -1,6 +1,5 @@
 // lib/features/rider/screens/home/rider_home_screen.dart
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +12,7 @@ import '../../../../shared/models/assignment_model.dart';
 import '../../../../shared/utils/extensions.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../providers/rider_providers.dart';
@@ -30,24 +30,25 @@ class RiderHomeScreen extends ConsumerWidget {
     return SafeArea(
       bottom: false,
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(16, 20, 16, bottomPad),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _Header(user: user),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
 
             // Stats row
             statsAsync.when(
               loading: () => Row(
                 children: List.generate(
-                    3,
-                    (i) => Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
-                            child: const ShimmerCard(height: 90),
-                          ),
-                        )),
+                  3,
+                  (i) => Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: i < 2 ? 12 : 0),
+                      child: const ShimmerCard(height: 104, isGlass: true),
+                    ),
+                  ),
+                ),
               ),
               error: (_, __) =>
                   const _StatsRow(pending: 0, completed: 0, collected: 0),
@@ -57,9 +58,9 @@ class RiderHomeScreen extends ConsumerWidget {
                 collected: (stats['total_collected'] as num?)?.toDouble() ?? 0,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            // Today's assignments
+            // Today's assignments section header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -74,85 +75,83 @@ class RiderHomeScreen extends ConsumerWidget {
                 ),
                 GestureDetector(
                   onTap: () => context.go(RouteConstants.riderAssignments),
-                  child: const Text(
-                    'View all',
-                    style: TextStyle(
-                      color: AppColors.riderAccent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.riderAccent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.riderAccent.withValues(alpha: 0.30),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          'View all',
+                          style: TextStyle(
+                            color: AppColors.riderAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          AppIcons.chevronRight,
+                          color: AppColors.riderAccent,
+                          size: 14,
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
             assignmentsAsync.when(
               loading: () => Column(
                 children: List.generate(
-                    3,
-                    (_) => const Padding(
-                          padding: EdgeInsets.only(bottom: 10),
-                          child: ShimmerCard(height: 80),
-                        )),
+                  3,
+                  (_) => const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: ShimmerCard(height: 86, isGlass: true),
+                  ),
+                ),
               ),
-              error: (e, _) => _GlassCard(
+              error: (e, _) => WhiteCard(
+                isGlass: true,
                 child: Text(
                   'Unable to load assignments.',
-                  style: TextStyle(color: Colors.grey.shade600),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                 ),
               ),
               data: (assignments) {
                 final today =
                     assignments.where((a) => a.collectionDate.isToday).toList();
                 if (today.isEmpty) {
-                  return _GlassCard(
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color:
-                                AppColors.riderAccent.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            AppIcons.checkCircle,
-                            color: AppColors.riderAccent,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'All clear for today!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'No collection assignments today.',
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.60),
-                              fontSize: 13),
-                        ),
-                      ],
-                    ),
+                  return _EmptyTodayCard(
+                    onCTA: () => context.go(RouteConstants.riderAssignments),
                   );
                 }
-                return Column(
-                  children: today
-                      .map((a) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _AssignmentTile(assignment: a),
-                          ))
-                      .toList(),
+                return AnimatedSize(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  child: Column(
+                    children: today
+                        .map((a) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _AssignmentTile(assignment: a),
+                            ))
+                        .toList(),
+                  ),
                 );
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
 
             // View all button
             AppButton(
@@ -164,7 +163,7 @@ class RiderHomeScreen extends ConsumerWidget {
               textColor: Colors.black87,
               onPressed: () => context.go(RouteConstants.riderAssignments),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             _LifetimeStats(),
           ],
         ),
@@ -173,43 +172,64 @@ class RiderHomeScreen extends ConsumerWidget {
   }
 }
 
-// ── Glass Card (glassmorphism container for rider) ─────────────────────────────
+// ── Empty Today Card ───────────────────────────────────────────────────────────
 
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-  final VoidCallback? onTap;
-  const _GlassCard({required this.child, this.padding, this.onTap});
+class _EmptyTodayCard extends StatelessWidget {
+  final VoidCallback onCTA;
+  const _EmptyTodayCard({required this.onCTA});
 
   @override
   Widget build(BuildContext context) {
-    Widget card = ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          width: double.infinity,
-          padding: padding ?? const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.10),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+    return WhiteCard(
+      isGlass: true,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.riderAccent.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.riderAccent.withValues(alpha: 0.25),
               ),
-            ],
+            ),
+            child: const Icon(
+              AppIcons.checkCircle,
+              color: AppColors.riderAccent,
+              size: 30,
+            ),
           ),
-          child: child,
-        ),
+          const SizedBox(height: 14),
+          const Text(
+            'All clear for today!',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'No collection assignments scheduled today.\nEnjoy your downtime or check all assignments.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          AppTextButton(
+            label: 'Browse all assignments',
+            icon: AppIcons.arrowRight,
+            color: AppColors.riderAccent,
+            onPressed: onCTA,
+          ),
+        ],
       ),
     );
-    if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: card);
-    }
-    return card;
   }
 }
 
@@ -220,39 +240,58 @@ class _LifetimeStats extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(riderLifetimeStatsProvider);
     return statsAsync.when(
-      loading: () => const SizedBox.shrink(),
+      loading: () => const ShimmerCard(height: 240, isGlass: true),
       error: (_, __) => const SizedBox.shrink(),
       data: (s) {
         if ((s['total_assignments'] as int? ?? 0) == 0) {
           return const SizedBox.shrink();
         }
-        return _GlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.bar_chart_rounded,
-                      color: AppColors.riderAccent, size: 18),
-                  SizedBox(width: 8),
-                  Text('Lifetime Summary',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700)),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _SRow('Total Assignments', '${s['total_assignments']}'),
-              _SRow('Completed', '${s['completed']}'),
-              _SRow('Credit Investigations', '${s['credit_investigations']}'),
-              _SRow('Collections Done', '${s['collections']}'),
-              _SRow('Failed', '${s['failed']}'),
-              _SRow('Completion Rate',
-                  '${((s['completion_rate'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}%'),
-              _SRow('Total Collected',
-                  '₱${((s['total_collected'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}'),
-            ],
+        final completionRate =
+            ((s['completion_rate'] as num?)?.toDouble() ?? 0);
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 280),
+          switchInCurve: Curves.easeOut,
+          child: WhiteCard(
+            key: const ValueKey('lifetime-stats'),
+            isGlass: true,
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.riderAccent.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.bar_chart_rounded,
+                          color: AppColors.riderAccent, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Lifetime Summary',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _SRow('Total Assignments', '${s['total_assignments']}'),
+                _SRow('Completed', '${s['completed']}'),
+                _SRow('Credit Investigations', '${s['credit_investigations']}'),
+                _SRow('Collections Done', '${s['collections']}'),
+                _SRow('Failed', '${s['failed']}'),
+                _SRow(
+                    'Completion Rate', '${completionRate.toStringAsFixed(1)}%'),
+                _SRow(
+                  'Total Collected',
+                  '₱${((s['total_collected'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}',
+                  isLast: true,
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -263,18 +302,21 @@ class _LifetimeStats extends ConsumerWidget {
 class _SRow extends StatelessWidget {
   final String label;
   final String value;
-  const _SRow(this.label, this.value);
+  final bool isLast;
+  const _SRow(this.label, this.value, {this.isLast = false});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.65), fontSize: 13)),
+                  color: Colors.white.withValues(alpha: 0.65),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400)),
           Text(value,
               style: const TextStyle(
                   color: Colors.white,
@@ -316,6 +358,7 @@ class _Header extends StatelessWidget {
                   letterSpacing: -0.3,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 DateTime.now().toDisplayDate,
                 style: TextStyle(
@@ -326,11 +369,13 @@ class _Header extends StatelessWidget {
         ),
         GestureDetector(
           onTap: () => context.go(RouteConstants.riderNotifications),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
             child: const Icon(AppIcons.notifications,
@@ -348,87 +393,106 @@ class _StatsRow extends StatelessWidget {
   final int pending;
   final int completed;
   final double collected;
-  const _StatsRow(
-      {required this.pending,
-      required this.completed,
-      required this.collected});
+  const _StatsRow({
+    required this.pending,
+    required this.completed,
+    required this.collected,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Expanded(
-            child: _StatCard(
-                label: 'Pending',
-                value: '$pending',
-                icon: AppIcons.clock,
-                color: AppColors.warning)),
-        const SizedBox(width: 10),
+          child: _StatCard(
+            label: 'Pending',
+            value: '$pending',
+            icon: AppIcons.clock,
+            color: AppColors.warning,
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
-            child: _StatCard(
-                label: 'Done',
-                value: '$completed',
-                icon: AppIcons.checkCircle,
-                color: AppColors.riderAccent)),
-        const SizedBox(width: 10),
+          child: _StatCard(
+            label: 'Done',
+            value: '$completed',
+            icon: AppIcons.checkCircle,
+            color: AppColors.riderAccent,
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
-            child: _StatCard(
-                label: 'Collected',
-                value: collected.toPesoCompact,
-                icon: AppIcons.coins,
-                color: AppColors.success)),
+          child: _StatCard(
+            label: 'Collected',
+            value: collected.toPesoCompact,
+            icon: AppIcons.coins,
+            color: AppColors.success,
+          ),
+        ),
       ],
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _StatCard extends StatefulWidget {
   final String label;
   final String value;
   final IconData icon;
   final Color color;
-  const _StatCard(
-      {required this.label,
-      required this.value,
-      required this.icon,
-      required this.color});
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  State<_StatCard> createState() => _StatCardState();
+}
+
+class _StatCardState extends State<_StatCard> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.13),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-          ),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        child: WhiteCard(
+          isGlass: true,
+          borderRadius: 16,
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: color, size: 16),
+                  color: widget.color.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(widget.icon, color: widget.color, size: 16),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(value,
+                child: Text(widget.value,
                     style: GoogleFonts.jetBrainsMono(
                         color: Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w700)),
               ),
-              const SizedBox(height: 2),
-              Text(label,
+              const SizedBox(height: 3),
+              Text(widget.label,
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.60),
                       fontSize: 11,
@@ -451,16 +515,20 @@ class _AssignmentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassCard(
+    return WhiteCard(
+      isGlass: true,
       padding: const EdgeInsets.all(14),
       onTap: () => context.go('/rider/assignments/${assignment.id}'),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
-              color: AppColors.riderAccent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.riderAccent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.riderAccent.withValues(alpha: 0.22),
+              ),
             ),
             child: const Icon(AppIcons.mapPin,
                 color: AppColors.riderAccent, size: 18),
@@ -476,15 +544,29 @@ class _AssignmentTile extends StatelessWidget {
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 14),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  assignment.lenderAddress ?? 'No address',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.60),
-                      fontSize: 12),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      AppIcons.mapPin,
+                      size: 12,
+                      color: Colors.white.withValues(alpha: 0.45),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        assignment.lenderAddress ?? 'No address',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.60),
+                            fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -500,7 +582,7 @@ class _AssignmentTile extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               StatusChip.assignmentStatus(assignment.status.value, small: true),
             ],
           ),

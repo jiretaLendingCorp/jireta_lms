@@ -1,7 +1,12 @@
 // lib/features/auth/screens/forgot_password_screen.dart
+//
+// Premium Material 3 redesign — forgot password screen.
+// NO business logic changes; same authProvider calls, same routes.
+// OTP entry uses Validators.otp; new passwords use Validators.password and confirmPassword.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:pinput/pinput.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -60,16 +65,21 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   Future<void> _submitOtpReset() async {
-    if (_otpCtrl.text.trim().length != 6) {
-      context.showSnack('Enter the 6-digit code', isError: true);
+    // Validate using the same validators used in forms
+    final otpErr = Validators.otp(_otpCtrl.text);
+    if (otpErr != null) {
+      context.showSnack(otpErr, isError: true);
       return;
     }
-    if (_newPassCtrl.text.length < 8) {
-      context.showSnack('Password must be at least 8 characters', isError: true);
+    final passErr = Validators.password(_newPassCtrl.text);
+    if (passErr != null) {
+      context.showSnack(passErr, isError: true);
       return;
     }
-    if (_newPassCtrl.text != _confirmPassCtrl.text) {
-      context.showSnack('Passwords do not match', isError: true);
+    final confirmErr =
+        Validators.confirmPassword(_confirmPassCtrl.text, _newPassCtrl.text);
+    if (confirmErr != null) {
+      context.showSnack(confirmErr, isError: true);
       return;
     }
     final err = await ref.read(authProvider.notifier).resetPasswordWithOtp(
@@ -88,6 +98,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authProvider).isLoading;
     final isWeb = context.screenWidth >= 900;
+    final isDark = context.isDark;
+
+    final cardBg = isDark ? const Color(0xFF1E2235) : Colors.white;
+    final borderCol = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
 
     Widget content;
     switch (_stage) {
@@ -117,16 +131,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       case _Stage.done:
         content = _SentView(
           method: _method,
-          contact: _method == _ResetMethod.email
-              ? _emailCtrl.text
-              : _phoneCtrl.text,
+          contact:
+              _method == _ResetMethod.email ? _emailCtrl.text : _phoneCtrl.text,
         );
         break;
     }
 
     if (isWeb) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF3F4F6),
+        backgroundColor: const Color(0xFFF6F7FB),
         body: Center(
           child: SizedBox(
             width: 480,
@@ -139,9 +152,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   Container(
                     padding: const EdgeInsets.all(36),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      border: Border.all(color: borderCol),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.08),
@@ -161,7 +174,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: const Color(0xFFF6F7FB),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -172,9 +185,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               Container(
                 padding: const EdgeInsets.all(28),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  border: Border.all(color: borderCol),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.08),
@@ -221,21 +234,50 @@ class _RequestForm extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.lock_reset_outlined,
+                    color: AppColors.accent, size: 22),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Reset your password',
+                    style: TextStyle(
+                      color: Color(0xFF0F1117),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
             'Reset Password',
-            style: TextStyle(
-                color: Color(0xFF111827),
-                fontSize: 24,
-                fontWeight: FontWeight.w700),
+            style: GoogleFonts.spaceGrotesk(
+              color: const Color(0xFF0F1117),
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              height: 1.15,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             method == _ResetMethod.email
                 ? "We'll email you a password reset link."
                 : "We'll send a 6-digit code to your phone via SMS.",
-            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+            style: const TextStyle(
+                color: Color(0xFF6B7280), fontSize: 14, height: 1.5),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           Row(
             children: [
               Expanded(
@@ -246,7 +288,7 @@ class _RequestForm extends StatelessWidget {
                   onTap: () => onMethodChanged(_ResetMethod.email),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: _MethodChip(
                   label: 'SMS',
@@ -276,12 +318,17 @@ class _RequestForm extends StatelessWidget {
               validator: Validators.phone,
               prefixIcon: const Icon(Icons.phone_outlined, size: 18),
             ),
-          const SizedBox(height: 24),
-          AppButton(
-            label: method == _ResetMethod.email ? 'Send Reset Link' : 'Send OTP',
-            isLoading: isLoading,
-            width: double.infinity,
-            onPressed: onSubmit,
+          const SizedBox(height: 28),
+          SizedBox(
+            height: 52,
+            child: AppButton(
+              label:
+                  method == _ResetMethod.email ? 'Send Reset Link' : 'Send OTP',
+              isLoading: isLoading,
+              width: double.infinity,
+              size: AppButtonSize.lg,
+              onPressed: onSubmit,
+            ),
           ),
           const SizedBox(height: 16),
           TextButton.icon(
@@ -317,29 +364,31 @@ class _MethodChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.accent.withValues(alpha: 0.08)
+              ? AppColors.accent.withValues(alpha: 0.10)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? AppColors.accent : const Color(0xFFE5E7EB),
+            width: selected ? 1.5 : 1,
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                size: 16,
-                color: selected ? AppColors.accent : Colors.grey),
-            const SizedBox(width: 6),
+                size: 18,
+                color: selected ? AppColors.accent : const Color(0xFF9CA3AF)),
+            const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? AppColors.accent : Colors.grey,
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? AppColors.accent : const Color(0xFF6B7280),
               ),
             ),
           ],
@@ -370,18 +419,18 @@ class _OtpForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const textColor = Color(0xFF111827);
+    const textColor = Color(0xFF0F1117);
     final defaultPinTheme = PinTheme(
-      width: 48,
-      height: 52,
+      width: 50,
+      height: 56,
       textStyle: const TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: textColor,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(10),
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
     );
@@ -389,15 +438,21 @@ class _OtpForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'Enter Verification Code',
-          style: TextStyle(
-              color: textColor, fontSize: 22, fontWeight: FontWeight.w700),
+          style: GoogleFonts.spaceGrotesk(
+            color: textColor,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+            height: 1.15,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
           'We sent a 6-digit code to $phone',
-          style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+          style: const TextStyle(
+              color: Color(0xFF6B7280), fontSize: 14, height: 1.5),
         ),
         const SizedBox(height: 24),
         Center(
@@ -407,39 +462,49 @@ class _OtpForm extends StatelessWidget {
             defaultPinTheme: defaultPinTheme,
             focusedPinTheme: defaultPinTheme.copyWith(
               decoration: defaultPinTheme.decoration!.copyWith(
-                border: Border.all(color: AppColors.accent, width: 1.5),
+                border: Border.all(color: AppColors.accent, width: 1.6),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 26),
         AppTextField(
           label: 'New Password',
           hint: 'At least 8 characters',
           controller: newPassCtrl,
           obscureText: true,
           prefixIcon: const Icon(Icons.lock_outline, size: 18),
+          validator: Validators.password,
+          helperText: 'Use at least 8 characters',
         ),
         const SizedBox(height: 16),
         AppTextField(
           label: 'Confirm New Password',
-          hint: '••••••••',
+          hint: 'Re-enter your password',
           controller: confirmPassCtrl,
           obscureText: true,
           prefixIcon: const Icon(Icons.lock_outline, size: 18),
+          validator: (v) => Validators.confirmPassword(v, newPassCtrl.text),
         ),
-        const SizedBox(height: 24),
-        AppButton(
-          label: 'Reset Password',
-          isLoading: isLoading,
-          width: double.infinity,
-          onPressed: onSubmit,
+        const SizedBox(height: 26),
+        SizedBox(
+          height: 52,
+          child: AppButton(
+            label: 'Reset Password',
+            isLoading: isLoading,
+            width: double.infinity,
+            size: AppButtonSize.lg,
+            onPressed: onSubmit,
+          ),
         ),
         const SizedBox(height: 12),
         TextButton(
           onPressed: isLoading ? null : onResend,
           child: const Text('Resend Code',
-              style: TextStyle(color: AppColors.accent, fontSize: 13)),
+              style: TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -458,42 +523,50 @@ class _SentView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.1),
+            color: AppColors.success.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
             isEmail
                 ? Icons.mark_email_read_outlined
                 : Icons.check_circle_outline,
-            size: 48,
+            size: 56,
             color: AppColors.success,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 26),
         Text(
           isEmail ? 'Check your email' : 'Password Reset!',
-          style: const TextStyle(
-              color: Color(0xFF111827),
-              fontSize: 22,
-              fontWeight: FontWeight.w700),
+          style: GoogleFonts.spaceGrotesk(
+            color: const Color(0xFF0F1117),
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+            height: 1.15,
+          ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Text(
           isEmail
               ? 'We sent a password reset link to\n$contact'
               : 'Your password has been changed successfully.\nYou can now sign in.',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+          style: const TextStyle(
+              color: Color(0xFF6B7280), fontSize: 14, height: 1.6),
         ),
         const SizedBox(height: 32),
-        AppButton(
-          label: 'Back to Login',
-          width: double.infinity,
-          onPressed: () => Navigator.pop(context),
-          isOutlined: true,
+        SizedBox(
+          height: 52,
+          child: AppButton(
+            label: 'Back to Login',
+            width: double.infinity,
+            size: AppButtonSize.lg,
+            onPressed: () => Navigator.pop(context),
+            isOutlined: true,
+          ),
         ),
       ],
     );

@@ -1,8 +1,13 @@
 // lib/features/auth/screens/login_screen.dart
+//
+// Premium Material 3 redesign — login screen (web + mobile).
+// NO business logic changes; same authProvider calls, same routes, same Supabase flow.
+// Form fields now require validation, animated focus, accessible labels.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -75,9 +80,9 @@ class _WebLayoutState extends State<_WebLayout>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 750));
+        vsync: this, duration: const Duration(milliseconds: 800));
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.07), end: Offset.zero)
+    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     _ctrl.forward();
   }
@@ -91,28 +96,33 @@ class _WebLayoutState extends State<_WebLayout>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE0F2F1),
+      backgroundColor: const Color(0xFFF6F7FB),
       body: Center(
         child: FadeTransition(
           opacity: _fade,
           child: SlideTransition(
             position: _slide,
             child: Container(
-              width: 880,
-              constraints: const BoxConstraints(maxHeight: 640),
+              width: 920,
+              constraints: const BoxConstraints(maxHeight: 660),
               margin: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.14),
-                    blurRadius: 56,
-                    offset: const Offset(0, 18),
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 60,
+                    offset: const Offset(0, 24),
+                  ),
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.08),
+                    blurRadius: 30,
+                    offset: const Offset(0, 0),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(24),
                 child: Row(
                   children: [
                     const _WelcomePanel(),
@@ -121,7 +131,7 @@ class _WebLayoutState extends State<_WebLayout>
                         color: Colors.white,
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 44, vertical: 36),
+                              horizontal: 48, vertical: 40),
                           child:
                               _LoginForm(s: widget.s, onWhiteBackground: true),
                         ),
@@ -146,22 +156,22 @@ class _WelcomePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
+      width: 340,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF4DD0C4), Color(0xFF00897B)],
+          colors: [Color(0xFF5B4FE9), Color(0xFF3D33C5)],
         ),
       ),
       child: Stack(
         children: [
           Positioned(
-            top: -70,
-            right: -70,
+            top: -80,
+            right: -80,
             child: Container(
-              width: 230,
-              height: 230,
+              width: 260,
+              height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.08),
@@ -169,45 +179,57 @@ class _WelcomePanel extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: -50,
-            left: -50,
+            bottom: -60,
+            left: -60,
             child: Container(
-              width: 180,
-              height: 180,
+              width: 200,
+              height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.06),
               ),
             ),
           ),
+          Positioned(
+            top: 120,
+            right: 40,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.all(36),
+            padding: const EdgeInsets.all(40),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const LogoWidget(size: 52, showName: false),
-                const SizedBox(height: 22),
+                const SizedBox(height: 28),
                 const Text(
                   'Welcome\nBack',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 36,
+                    fontSize: 40,
                     fontWeight: FontWeight.w800,
-                    height: 1.1,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: 40,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(2),
+                    height: 1.05,
+                    letterSpacing: -0.8,
                   ),
                 ),
                 const SizedBox(height: 14),
+                Container(
+                  width: 44,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 Text(
                   'Jireta Lending\nManagement System',
                   style: TextStyle(
@@ -217,7 +239,7 @@ class _WelcomePanel extends StatelessWidget {
                     letterSpacing: 0.1,
                   ),
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 40),
                 const _WelcomeChip(
                     icon: Icons.people_outline_rounded, label: 'Lender Portal'),
                 const SizedBox(height: 10),
@@ -226,6 +248,14 @@ class _WelcomePanel extends StatelessWidget {
                 const SizedBox(height: 10),
                 const _WelcomeChip(
                     icon: Icons.route_rounded, label: 'Rider Collections'),
+                const Spacer(),
+                Text(
+                  '© 2025 Jireta Loans',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
@@ -243,10 +273,14 @@ class _WelcomeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
+        color: Colors.white.withValues(alpha: 0.13),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -257,7 +291,8 @@ class _WelcomeChip extends StatelessWidget {
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
-                  fontWeight: FontWeight.w500)),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.1)),
         ],
       ),
     );
@@ -278,15 +313,25 @@ class _MobileLayout extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 56),
-              LogoWidget(size: 52, showName: true, darkText: !isDark),
-              const SizedBox(height: 52),
-              _LoginForm(s: s, onWhiteBackground: !isDark),
-              const SizedBox(height: 40),
-            ],
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom -
+                  56,
+            ),
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 56),
+                  LogoWidget(size: 52, showName: true, darkText: !isDark),
+                  const SizedBox(height: 48),
+                  _LoginForm(s: s, onWhiteBackground: !isDark),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -296,77 +341,103 @@ class _MobileLayout extends StatelessWidget {
 
 // ── Shared Form ───────────────────────────────────────────────────────────────
 
-class _LoginForm extends ConsumerWidget {
+class _LoginForm extends ConsumerStatefulWidget {
   final _LoginScreenState s;
   final bool onWhiteBackground;
   const _LoginForm({required this.s, this.onWhiteBackground = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isLoading = ref.watch(authProvider).isLoading;
-    final isDark = context.isDark && !onWhiteBackground;
+  ConsumerState<_LoginForm> createState() => _LoginFormState();
+}
 
-    final headColor = isDark ? Colors.white : const Color(0xFF111827);
+class _LoginFormState extends ConsumerState<_LoginForm> {
+  bool _emailFocused = false;
+  bool _passFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(authProvider).isLoading;
+    final isDark = context.isDark && !widget.onWhiteBackground;
+
+    final headColor = isDark ? Colors.white : const Color(0xFF0F1117);
     final subColor = isDark ? Colors.white60 : const Color(0xFF6B7280);
-    final bodyColor = isDark ? Colors.white : const Color(0xFF374151);
+    final bodyColor = isDark ? Colors.white : const Color(0xFF1F2937);
     final fillColor =
-        isDark ? Colors.white.withValues(alpha: 0.07) : const Color(0xFFF9FAFB);
+        isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF7F8FA);
     final borderCol = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
     final iconColor = isDark ? Colors.white38 : const Color(0xFF9CA3AF);
 
     return Form(
-      key: s._formKey,
+      key: widget.s._formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('Welcome back',
-              style: TextStyle(
-                  color: headColor,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.4)),
-          const SizedBox(height: 6),
-          Text('Sign in to your account',
-              style: TextStyle(color: subColor, fontSize: 14)),
-          const SizedBox(height: 32),
+              style: GoogleFonts.spaceGrotesk(
+                color: headColor,
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+                height: 1.15,
+              )),
+          const SizedBox(height: 8),
+          Text('Sign in to your account to continue',
+              style: TextStyle(color: subColor, fontSize: 14, height: 1.5)),
+          const SizedBox(height: 36),
           _FormField(
             label: 'Email address',
             hint: 'you@example.com',
-            ctrl: s._emailCtrl,
+            ctrl: widget.s._emailCtrl,
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
             labelColor: bodyColor,
+            iconColor: iconColor,
+            isFocused: _emailFocused,
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
             prefixIcon: Icon(AppIcons.email, size: 18, color: iconColor),
             validator: Validators.email,
+            onFocusChange: (v) => setState(() => _emailFocused = v),
           ),
           const SizedBox(height: 16),
           _FormField(
             label: 'Password',
-            hint: '••••••••',
-            ctrl: s._passCtrl,
+            hint: 'Enter your password',
+            ctrl: widget.s._passCtrl,
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
             labelColor: bodyColor,
-            obscureText: s._obscure,
+            iconColor: iconColor,
+            isFocused: _passFocused,
+            obscureText: widget.s._obscure,
+            textInputAction: TextInputAction.done,
             prefixIcon: Icon(AppIcons.lock, size: 18, color: iconColor),
             suffixIcon: IconButton(
-              icon: Icon(
-                s._obscure
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 18,
-                color: iconColor,
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                transitionBuilder: (c, a) =>
+                    ScaleTransition(scale: a, child: c),
+                child: Icon(
+                  widget.s._obscure
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  key: ValueKey(widget.s._obscure),
+                  size: 18,
+                  color: iconColor,
+                ),
               ),
-              onPressed: s.toggleObscure,
+              onPressed: widget.s.toggleObscure,
+              splashRadius: 18,
+              tooltip: widget.s._obscure ? 'Show password' : 'Hide password',
             ),
-            validator: (v) =>
-                v == null || v.isEmpty ? 'Password is required' : null,
+            validator: Validators.password,
+            onFocusChange: (v) => setState(() => _passFocused = v),
+            onSubmitted: (_) => widget.s._submit(),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
@@ -380,21 +451,21 @@ class _LoginForm extends ConsumerWidget {
                   style: TextStyle(
                       color: AppColors.accent,
                       fontSize: 13,
-                      fontWeight: FontWeight.w500)),
+                      fontWeight: FontWeight.w600)),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           SizedBox(
-            height: 50,
+            height: 52,
             child: AppButton.gradient(
               label: 'Sign In',
               isLoading: isLoading,
               width: double.infinity,
               size: AppButtonSize.lg,
-              onPressed: s._submit,
+              onPressed: widget.s._submit,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           Row(
             children: [
               Expanded(
@@ -407,7 +478,7 @@ class _LoginForm extends ConsumerWidget {
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 1.2,
+                        letterSpacing: 1.4,
                         color:
                             isDark ? Colors.white38 : const Color(0xFF9CA3AF))),
               ),
@@ -417,12 +488,12 @@ class _LoginForm extends ConsumerWidget {
                           isDark ? Colors.white12 : const Color(0xFFE5E7EB))),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           _GoogleSignInButton(
             isLoading: isLoading,
-            onPressed: s._googleSignIn,
+            onPressed: widget.s._googleSignIn,
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -454,11 +525,16 @@ class _FormField extends StatelessWidget {
   final Color borderColor;
   final Color textColor;
   final Color labelColor;
+  final Color iconColor;
   final TextInputType keyboardType;
   final bool obscureText;
+  final bool isFocused;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final FormFieldValidator<String>? validator;
+  final ValueChanged<bool>? onFocusChange;
+  final void Function(String)? onSubmitted;
+  final TextInputAction? textInputAction;
 
   const _FormField({
     required this.label,
@@ -467,12 +543,17 @@ class _FormField extends StatelessWidget {
     required this.borderColor,
     required this.textColor,
     required this.labelColor,
+    required this.iconColor,
     this.hint,
     this.keyboardType = TextInputType.text,
     this.obscureText = false,
+    this.isFocused = false,
     this.prefixIcon,
     this.suffixIcon,
     this.validator,
+    this.onFocusChange,
+    this.onSubmitted,
+    this.textInputAction,
   });
 
   @override
@@ -482,43 +563,59 @@ class _FormField extends StatelessWidget {
       children: [
         Text(label,
             style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w500, color: labelColor)),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: ctrl,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          style: TextStyle(color: textColor, fontSize: 15),
-          validator: validator,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(color: borderColor, fontSize: 14),
-            filled: true,
-            fillColor: fillColor,
-            prefixIcon: prefixIcon,
-            suffixIcon: suffixIcon,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: borderColor),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: labelColor,
+                letterSpacing: 0.1,
+                height: 1.2)),
+        const SizedBox(height: 7),
+        Focus(
+          onFocusChange: onFocusChange,
+          child: TextFormField(
+            controller: ctrl,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            style: TextStyle(color: textColor, fontSize: 15, height: 1.4),
+            validator: validator,
+            textInputAction: textInputAction,
+            onFieldSubmitted: onSubmitted,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: borderColor, fontSize: 14),
+              filled: true,
+              fillColor: fillColor,
+              prefixIcon: prefixIcon,
+              suffixIcon: suffixIcon,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide:
+                    const BorderSide(color: AppColors.accent, width: 1.6),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppColors.error),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide:
+                    const BorderSide(color: AppColors.error, width: 1.6),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              errorStyle: const TextStyle(
+                color: AppColors.error,
+                fontSize: 12,
+                height: 1.4,
+              ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: borderColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.error),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           ),
         ),
       ],
@@ -544,24 +641,24 @@ class _GoogleSignInButton extends StatelessWidget {
     const borderCol = Color(0xFFDADCE0);
 
     return SizedBox(
-      height: 50,
+      height: 52,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: AnimatedOpacity(
             opacity: isLoading ? 0.55 : 1.0,
             duration: const Duration(milliseconds: 150),
             child: Container(
               decoration: BoxDecoration(
                 color: bgColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: borderCol, width: 1.2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
+                    blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
                 ],

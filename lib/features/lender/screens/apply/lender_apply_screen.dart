@@ -14,16 +14,21 @@
 //               LoanTerms.from() now always includes monthly.
 //   All computation still done server-side in loan-apply/index.ts.
 //   Flutter only shows a preview; final amounts come from backend response.
+//
+// REDESIGN (Task 7-A): Material 3 polish, per-step Form state with Validators,
+// numbered step indicator, animated transitions, premium glass cards.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:signature/signature.dart';
+import '../../../../core/constants/app_icons.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/loan_term_tier_model.dart';
 import '../../../../shared/utils/extensions.dart';
+import '../../../../shared/utils/validators.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/glass_card.dart';
@@ -134,11 +139,11 @@ extension DisbursementMethodX on DisbursementMethod {
   IconData get icon {
     switch (this) {
       case DisbursementMethod.cash:
-        return Icons.money_rounded;
+        return AppIcons.banknote;
       case DisbursementMethod.gcash:
-        return Icons.phone_android_rounded;
+        return AppIcons.phone;
       case DisbursementMethod.office:
-        return Icons.business_rounded;
+        return AppIcons.building;
     }
   }
 }
@@ -157,6 +162,11 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
   static const int _totalSteps = 4;
   bool _submitting = false;
 
+  // Per-step form keys for inline validation
+  final _step1FormKey = GlobalKey<FormState>();
+  final _step2FormKey = GlobalKey<FormState>();
+  final _step4FormKey = GlobalKey<FormState>();
+
   // Step 1 — Loan details
   final _amountCtrl = TextEditingController();
   final _purposeCtrl = TextEditingController();
@@ -171,7 +181,7 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
   final _cmMiddleCtrl = TextEditingController();
   String _relationship = 'Spouse';
   final _sigCtrl = SignatureController(
-    penStrokeWidth: 2,
+    penStrokeWidth: 2.4,
     penColor: Colors.white,
     exportBackgroundColor: Colors.transparent,
   );
@@ -238,7 +248,8 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
     if (_step < _totalSteps - 1) {
       setState(() => _step++);
       _pageCtrl.animateToPage(_step,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic);
     }
   }
 
@@ -246,7 +257,8 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
     if (_step > 0) {
       setState(() => _step--);
       _pageCtrl.animateToPage(_step,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic);
     } else {
       context.go(RouteConstants.lenderHome);
     }
@@ -268,8 +280,10 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
   }
 
   bool _validateStep2() {
-    if (_cmFirstCtrl.text.trim().isEmpty || _cmLastCtrl.text.trim().isEmpty) {
-      context.showSnack('Enter co-maker full name', isError: true);
+    // Validate text fields via form
+    final formValid = _step2FormKey.currentState?.validate() ?? false;
+    if (!formValid) {
+      context.showSnack('Please complete co-maker details', isError: true);
       return false;
     }
     if (_sigCtrl.isEmpty) {
@@ -281,17 +295,8 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
 
   bool _validateStep4() {
     if (_disbursementMethod == DisbursementMethod.gcash) {
-      if (_gcashNameCtrl.text.trim().isEmpty) {
-        context.showSnack('Enter GCash account name', isError: true);
-        return false;
-      }
-      if (_gcashNumberCtrl.text.trim().isEmpty) {
-        context.showSnack('Enter GCash number', isError: true);
-        return false;
-      }
-      if (!RegExp(r'^09\d{9}$').hasMatch(_gcashNumberCtrl.text.trim())) {
-        context.showSnack('Enter a valid GCash number (09XXXXXXXXX)',
-            isError: true);
+      final formValid = _step4FormKey.currentState?.validate() ?? false;
+      if (!formValid) {
         return false;
       }
     }
@@ -367,9 +372,25 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text('Apply for Loan — Step ${_step + 1} of $_totalSteps'),
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 240),
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.18),
+                end: Offset.zero,
+              ).animate(anim),
+              child: child,
+            ),
+          ),
+          child: Text(
+            'Apply for Loan — Step ${_step + 1} of $_totalSteps',
+            key: ValueKey(_step),
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(AppIcons.arrowLeft),
           onPressed: _back,
         ),
       ),
@@ -382,25 +403,31 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 // Step 1 — Loan details
-                _Step1(
-                  amountCtrl: _amountCtrl,
-                  purposeCtrl: _purposeCtrl,
-                  frequency: _frequency,
-                  loanTerms: _loanTerms,
-                  amountTouched: _amountTouched,
-                  onFreqChanged: (v) => setState(() => _frequency = v),
-                  onNext: _next,
+                Form(
+                  key: _step1FormKey,
+                  child: _Step1(
+                    amountCtrl: _amountCtrl,
+                    purposeCtrl: _purposeCtrl,
+                    frequency: _frequency,
+                    loanTerms: _loanTerms,
+                    amountTouched: _amountTouched,
+                    onFreqChanged: (v) => setState(() => _frequency = v),
+                    onNext: _next,
+                  ),
                 ),
                 // Step 2 — Co-maker
-                _Step2(
-                  firstCtrl: _cmFirstCtrl,
-                  lastCtrl: _cmLastCtrl,
-                  middleCtrl: _cmMiddleCtrl,
-                  relationship: _relationship,
-                  relationships: _relationships,
-                  sigCtrl: _sigCtrl,
-                  onRelChanged: (v) => setState(() => _relationship = v),
-                  onNext: _next,
+                Form(
+                  key: _step2FormKey,
+                  child: _Step2(
+                    firstCtrl: _cmFirstCtrl,
+                    lastCtrl: _cmLastCtrl,
+                    middleCtrl: _cmMiddleCtrl,
+                    relationship: _relationship,
+                    relationships: _relationships,
+                    sigCtrl: _sigCtrl,
+                    onRelChanged: (v) => setState(() => _relationship = v),
+                    onNext: _next,
+                  ),
                 ),
                 // Step 3 — Review summary
                 _Step3(
@@ -411,15 +438,18 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
                   relationship: _relationship,
                   onNext: _next,
                 ),
-                // Step 4 — Disbursement method (NEW)
-                _Step4(
-                  selectedMethod: _disbursementMethod,
-                  gcashNameCtrl: _gcashNameCtrl,
-                  gcashNumberCtrl: _gcashNumberCtrl,
-                  submitting: _submitting,
-                  onMethodChanged: (m) =>
-                      setState(() => _disbursementMethod = m),
-                  onSubmit: _submit,
+                // Step 4 — Disbursement method
+                Form(
+                  key: _step4FormKey,
+                  child: _Step4(
+                    selectedMethod: _disbursementMethod,
+                    gcashNameCtrl: _gcashNameCtrl,
+                    gcashNumberCtrl: _gcashNumberCtrl,
+                    submitting: _submitting,
+                    onMethodChanged: (m) =>
+                        setState(() => _disbursementMethod = m),
+                    onSubmit: _submit,
+                  ),
                 ),
               ],
             ),
@@ -430,7 +460,7 @@ class _LenderApplyScreenState extends ConsumerState<LenderApplyScreen> {
   }
 }
 
-// ── Step indicator ────────────────────────────────────────────────────────────
+// ── Step indicator with numbered circles ──────────────────────────────────────
 class _StepIndicator extends StatelessWidget {
   final int current;
   final int total;
@@ -438,28 +468,90 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labels = ['Loan', 'Co-maker', 'Review', 'Disburse'];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Row(
         children: List.generate(total, (i) {
           final done = i < current;
           final active = i == current;
+          final color = done || active
+              ? AppColors.lenderAccent
+              : Colors.white.withValues(alpha: 0.18);
           return Expanded(
             child: Row(
               children: [
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: done || active
-                          ? AppColors.lenderAccent
-                          : Colors.white12,
-                      borderRadius: BorderRadius.circular(2),
+                // Numbered circle
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOut,
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: done || active
+                        ? AppColors.lenderAccent
+                        : Colors.white.withValues(alpha: 0.06),
+                    border: Border.all(
+                      color: color,
+                      width: done || active ? 0 : 1.4,
                     ),
+                    shape: BoxShape.circle,
+                    boxShadow: active
+                        ? [
+                            BoxShadow(
+                              color: AppColors.lenderAccent
+                                  .withValues(alpha: 0.45),
+                              blurRadius: 12,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: done
+                        ? const Icon(Icons.check_rounded,
+                            color: Colors.white, size: 14)
+                        : Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              color: active
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.5),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                 ),
-                if (i < total - 1) const SizedBox(width: 4),
+                if (i < total - 1) ...[
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOut,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: done
+                            ? AppColors.lenderAccent
+                            : Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ] else ...[
+                  const SizedBox(width: 8),
+                  if (active)
+                    Text(
+                      labels[i],
+                      style: const TextStyle(
+                        color: AppColors.lenderAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                ],
               ],
             ),
           );
@@ -487,7 +579,7 @@ class _PaymentTermsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.calculate_rounded,
+              const Icon(AppIcons.coins,
                   color: AppColors.lenderAccent, size: 16),
               const SizedBox(width: 8),
               const Text('Payment Breakdown',
@@ -551,8 +643,7 @@ class _PaymentTermsCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Icons.info_outline_rounded,
-                  color: Colors.white38, size: 13),
+              const Icon(AppIcons.info, color: Colors.white38, size: 13),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -624,13 +715,14 @@ class _FreqRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: isSelected
             ? AppColors.lenderAccent.withValues(alpha: 0.18)
             : Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isSelected
               ? AppColors.lenderAccent.withValues(alpha: 0.5)
@@ -674,6 +766,57 @@ class _FreqRow extends StatelessWidget {
   }
 }
 
+// ── Step header ───────────────────────────────────────────────────────────────
+class _StepHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  const _StepHeader({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.lenderAccent.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: AppColors.lenderAccent.withValues(alpha: 0.35)),
+          ),
+          child: Icon(icon, color: AppColors.lenderAccent, size: 22),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2)),
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      height: 1.4)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ── Step 1 — Loan details ─────────────────────────────────────────────────────
 class _Step1 extends StatelessWidget {
   final TextEditingController amountCtrl;
@@ -704,19 +847,15 @@ class _Step1 extends StatelessWidget {
         : null;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Loan Details',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('₱3,000 – ₱500,000 · 20% flat interest',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+          const _StepHeader(
+            icon: AppIcons.banknote,
+            title: 'Loan Details',
+            subtitle: '₱3,000 – ₱500,000 · 20% flat interest',
+          ),
           const SizedBox(height: 24),
 
           // FIX: errorText makes field border turn red when below ₱3,000
@@ -728,8 +867,9 @@ class _Step1 extends StatelessWidget {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             prefixIcon:
-                const Icon(Icons.attach_money, size: 18, color: Colors.white54),
+                const Icon(AppIcons.banknote, size: 18, color: Colors.white54),
             errorText: amountError,
+            validator: (v) => Validators.loanAmount(v),
           ),
           const SizedBox(height: 20),
 
@@ -742,7 +882,7 @@ class _Step1 extends StatelessWidget {
               style: TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
-                  fontWeight: FontWeight.w500)),
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
 
           // FIX: Always show Daily, Weekly, Monthly for all amounts
@@ -762,14 +902,16 @@ class _Step1 extends StatelessWidget {
               return Expanded(
                 child: GestureDetector(
                   onTap: () => onFreqChanged(f),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
                     margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: selected
                           ? AppColors.lenderAccent
                           : Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: selected
                             ? AppColors.lenderAccent
@@ -815,16 +957,17 @@ class _Step1 extends StatelessWidget {
             controller: purposeCtrl,
             isGlass: true,
             maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 28),
-          AppButton(
+          AppButton.gradient(
             label: 'Next: Co-maker Info',
-            color: AppColors.lenderAccent,
+            icon: AppIcons.arrowRight,
             width: double.infinity,
+            size: AppButtonSize.lg,
             onPressed: onNext,
-            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 60),
         ],
       ),
     );
@@ -856,60 +999,62 @@ class _Step2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Co-maker Information',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('A co-maker guarantees your loan application',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+          const _StepHeader(
+            icon: AppIcons.userCheck,
+            title: 'Co-maker Information',
+            subtitle: 'A co-maker guarantees your loan application',
+          ),
           const SizedBox(height: 24),
           Row(children: [
             Expanded(
                 child: AppTextField(
-                    label: 'First Name',
-                    controller: firstCtrl,
-                    isGlass: true,
-                    textCapitalization: TextCapitalization.words)),
+              label: 'First Name',
+              controller: firstCtrl,
+              isGlass: true,
+              textCapitalization: TextCapitalization.words,
+              validator: Validators.firstName,
+            )),
             const SizedBox(width: 10),
             Expanded(
                 child: AppTextField(
-                    label: 'Last Name',
-                    controller: lastCtrl,
-                    isGlass: true,
-                    textCapitalization: TextCapitalization.words)),
+              label: 'Last Name',
+              controller: lastCtrl,
+              isGlass: true,
+              textCapitalization: TextCapitalization.words,
+              validator: Validators.lastName,
+            )),
           ]),
           const SizedBox(height: 14),
           AppTextField(
-              label: 'Middle Name (optional)',
-              controller: middleCtrl,
-              isGlass: true,
-              textCapitalization: TextCapitalization.words),
-          const SizedBox(height: 14),
+            label: 'Middle Name (optional)',
+            controller: middleCtrl,
+            isGlass: true,
+            textCapitalization: TextCapitalization.words,
+            validator: Validators.middleName,
+          ),
+          const SizedBox(height: 16),
           const Text('Relationship',
               style: TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
-                  fontWeight: FontWeight.w500)),
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: relationship,
                 isExpanded: true,
-                dropdownColor: const Color(0xFF241055),
+                dropdownColor: const Color(0xFF14183C),
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 iconEnabledColor: Colors.white54,
                 items: relationships
@@ -919,30 +1064,32 @@ class _Step2 extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           const Text('Co-maker Signature',
               style: TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
-                  fontWeight: FontWeight.w500)),
+                  fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppColors.lenderAccent.withValues(alpha: 0.25)),
               ),
               child: Column(
                 children: [
                   Signature(
                     controller: sigCtrl,
-                    height: 150,
+                    height: 160,
                     backgroundColor: Colors.transparent,
                   ),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       border: Border(
                           top: BorderSide(
@@ -951,15 +1098,27 @@ class _Step2 extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Draw signature above',
-                            style: TextStyle(
+                        Row(
+                          children: [
+                            Icon(AppIcons.edit,
                                 color: Colors.white.withValues(alpha: 0.4),
-                                fontSize: 12)),
-                        TextButton(
+                                size: 13),
+                            const SizedBox(width: 6),
+                            Text('Draw signature above',
+                                style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                    fontSize: 12)),
+                          ],
+                        ),
+                        TextButton.icon(
                           onPressed: () => sigCtrl.clear(),
-                          child: const Text('Clear',
+                          icon: const Icon(AppIcons.close,
+                              color: AppColors.lenderAccent, size: 14),
+                          label: const Text('Clear',
                               style: TextStyle(
-                                  color: AppColors.lenderAccent, fontSize: 12)),
+                                  color: AppColors.lenderAccent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
                         ),
                       ],
                     ),
@@ -969,14 +1128,14 @@ class _Step2 extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          AppButton(
+          AppButton.gradient(
             label: 'Next: Review',
-            color: AppColors.lenderAccent,
+            icon: AppIcons.arrowRight,
             width: double.infinity,
+            size: AppButtonSize.lg,
             onPressed: onNext,
-            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 60),
         ],
       ),
     );
@@ -1003,19 +1162,15 @@ class _Step3 extends StatelessWidget {
   Widget build(BuildContext context) {
     final terms = loanTerms;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Review Application',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('Confirm details before choosing disbursement',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+          const _StepHeader(
+            icon: AppIcons.badgeCheck,
+            title: 'Review Application',
+            subtitle: 'Confirm details before choosing disbursement',
+          ),
           const SizedBox(height: 24),
           if (terms != null) ...[
             GlassCard(
@@ -1026,7 +1181,7 @@ class _Step3 extends StatelessWidget {
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 15,
-                          fontWeight: FontWeight.w600)),
+                          fontWeight: FontWeight.w700)),
                   const SizedBox(height: 16),
                   _InfoRow('Principal', terms.principal.toPeso),
                   _InfoRow('Interest (20%)', terms.interest.toPeso),
@@ -1070,7 +1225,7 @@ class _Step3 extends StatelessWidget {
                       style: TextStyle(color: Colors.white70))),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           GlassCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1079,23 +1234,24 @@ class _Step3 extends StatelessWidget {
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 15,
-                        fontWeight: FontWeight.w600)),
+                        fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
                 _InfoRow('Name', comakerName.isEmpty ? '—' : comakerName),
                 _InfoRow('Relationship', relationship),
-                const _InfoRow('Signature', 'Provided ✓'),
+                const _InfoRow('Signature', 'Provided ✓',
+                    valueColor: AppColors.success),
               ],
             ),
           ),
           const SizedBox(height: 28),
-          AppButton(
+          AppButton.gradient(
             label: 'Next: Choose Disbursement',
-            color: AppColors.lenderAccent,
+            icon: AppIcons.arrowRight,
             width: double.infinity,
+            size: AppButtonSize.lg,
             onPressed: onNext,
-            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 60),
         ],
       ),
     );
@@ -1123,19 +1279,15 @@ class _Step4 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('How do you want to receive the money?',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('Choose your preferred disbursement method',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+          const _StepHeader(
+            icon: AppIcons.wallet,
+            title: 'How do you want to receive the money?',
+            subtitle: 'Choose your preferred disbursement method',
+          ),
           const SizedBox(height: 24),
 
           // Method cards
@@ -1146,7 +1298,8 @@ class _Step4 extends StatelessWidget {
               child: GestureDetector(
                 onTap: () => onMethodChanged(m),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: selected
@@ -1168,7 +1321,7 @@ class _Step4 extends StatelessWidget {
                           color: selected
                               ? AppColors.lenderAccent.withValues(alpha: 0.25)
                               : Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(m.icon,
                             color: selected
@@ -1197,9 +1350,18 @@ class _Step4 extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (selected)
-                        const Icon(Icons.check_circle_rounded,
-                            color: AppColors.lenderAccent, size: 20),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: selected
+                            ? const Icon(Icons.check_circle_rounded,
+                                key: ValueKey('on'),
+                                color: AppColors.lenderAccent,
+                                size: 22)
+                            : Icon(Icons.radio_button_unchecked_rounded,
+                                key: const ValueKey('off'),
+                                color: Colors.white.withValues(alpha: 0.3),
+                                size: 22),
+                      ),
                     ],
                   ),
                 ),
@@ -1218,7 +1380,7 @@ class _Step4 extends StatelessWidget {
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
-                          fontWeight: FontWeight.w600)),
+                          fontWeight: FontWeight.w700)),
                   const SizedBox(height: 14),
                   AppTextField(
                     label: 'GCash Account Name',
@@ -1226,8 +1388,9 @@ class _Step4 extends StatelessWidget {
                     controller: gcashNameCtrl,
                     isGlass: true,
                     textCapitalization: TextCapitalization.words,
-                    prefixIcon: const Icon(Icons.person_rounded,
+                    prefixIcon: const Icon(AppIcons.person,
                         size: 18, color: Colors.white54),
+                    validator: Validators.gcashName,
                   ),
                   const SizedBox(height: 12),
                   AppTextField(
@@ -1240,15 +1403,29 @@ class _Step4 extends StatelessWidget {
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(11),
                     ],
-                    prefixIcon: const Icon(Icons.phone_android_rounded,
+                    prefixIcon: const Icon(AppIcons.phone,
                         size: 18, color: Colors.white54),
+                    validator: Validators.gcashNumber,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '⚡ When your loan is approved, funds will be automatically transferred to this GCash number.',
-                    style: TextStyle(
-                        color: AppColors.lenderAccent.withValues(alpha: 0.8),
-                        fontSize: 11),
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(AppIcons.info,
+                          color: AppColors.lenderAccent.withValues(alpha: 0.8),
+                          size: 14),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'When your loan is approved, funds will be automatically transferred to this GCash number.',
+                          style: TextStyle(
+                              color: AppColors.lenderAccent
+                                  .withValues(alpha: 0.85),
+                              fontSize: 11,
+                              height: 1.4),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1260,7 +1437,7 @@ class _Step4 extends StatelessWidget {
             GlassCard(
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded,
+                  Icon(AppIcons.info,
                       color: AppColors.lenderAccent.withValues(alpha: 0.8),
                       size: 18),
                   const SizedBox(width: 10),
@@ -1269,7 +1446,8 @@ class _Step4 extends StatelessWidget {
                       'A rider will be assigned to deliver cash to your registered address when your loan is approved.',
                       style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 12),
+                          fontSize: 12,
+                          height: 1.4),
                     ),
                   ),
                 ],
@@ -1282,7 +1460,7 @@ class _Step4 extends StatelessWidget {
             GlassCard(
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded,
+                  Icon(AppIcons.info,
                       color: AppColors.lenderAccent.withValues(alpha: 0.8),
                       size: 18),
                   const SizedBox(width: 10),
@@ -1291,7 +1469,8 @@ class _Step4 extends StatelessWidget {
                       'When your loan is approved, you can pick up the cash at our office. You will be notified of the schedule.',
                       style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 12),
+                          fontSize: 12,
+                          height: 1.4),
                     ),
                   ),
                 ],
@@ -1299,13 +1478,13 @@ class _Step4 extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           GlassCard(
             borderColor: AppColors.warning.withValues(alpha: 0.3),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline_rounded,
+                const Icon(AppIcons.warning,
                     color: AppColors.warning, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1314,22 +1493,23 @@ class _Step4 extends StatelessWidget {
                     'Penalty of 20% of total payable activates after 30 days of non-payment.',
                     style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12),
+                        fontSize: 12,
+                        height: 1.4),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 28),
-          AppButton(
+          const SizedBox(height: 24),
+          AppButton.gradient(
             label: 'Submit Application',
-            color: AppColors.lenderAccent,
+            icon: AppIcons.checkCircle,
             width: double.infinity,
+            size: AppButtonSize.lg,
             isLoading: submitting,
             onPressed: onSubmit,
-            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 60),
         ],
       ),
     );
@@ -1345,13 +1525,15 @@ class _InstallmentBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: isSelected
             ? AppColors.lenderAccent.withValues(alpha: 0.2)
             : Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected
               ? AppColors.lenderAccent.withValues(alpha: 0.5)
@@ -1380,7 +1562,8 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
   final bool bold;
-  const _InfoRow(this.label, this.value, {this.bold = false});
+  final Color? valueColor;
+  const _InfoRow(this.label, this.value, {this.bold = false, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -1394,7 +1577,7 @@ class _InfoRow extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
           Text(value,
               style: TextStyle(
-                color: Colors.white,
+                color: valueColor ?? Colors.white,
                 fontSize: 13,
                 fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
               )),

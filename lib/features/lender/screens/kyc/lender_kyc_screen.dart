@@ -1,12 +1,18 @@
 // lib/features/lender/screens/kyc/lender_kyc_screen.dart
+//
+// REDESIGN (Task 7-A): Material 3 polish, Form state with Validators on all
+// text fields, premium photo upload boxes, animated selection state,
+// consistent 14px corner radius, AppIcons for visual consistency.
 
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/constants/app_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/kyc_model.dart';
 import '../../../../shared/utils/extensions.dart';
+import '../../../../shared/utils/validators.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/glass_card.dart';
@@ -35,6 +41,7 @@ class _LenderKycScreenState extends ConsumerState<LenderKycScreen> {
   String _selfieExt = 'jpg';
 
   bool _submitting = false;
+  final _formKey = GlobalKey<FormState>();
 
   final _idTypes = [
     'SSS',
@@ -61,9 +68,9 @@ class _LenderKycScreenState extends ConsumerState<LenderKycScreen> {
   Future<void> _pickImage(String field) async {
     final src = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: const Color(0xFF1A1D27),
+      backgroundColor: const Color(0xFF10173A),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (sheetCtx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -75,15 +82,23 @@ class _LenderKycScreenState extends ConsumerState<LenderKycScreen> {
                 decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(2))),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('Select Source',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600)),
+            ),
             ListTile(
                 leading:
-                    const Icon(Icons.camera_alt_outlined, color: Colors.white),
+                    const Icon(AppIcons.camera, color: AppColors.lenderAccent),
                 title:
                     const Text('Camera', style: TextStyle(color: Colors.white)),
                 onTap: () => Navigator.pop(sheetCtx, ImageSource.camera)),
             ListTile(
-                leading: const Icon(Icons.photo_library_outlined,
-                    color: Colors.white),
+                leading:
+                    const Icon(AppIcons.image, color: AppColors.lenderAccent),
                 title: const Text('Gallery',
                     style: TextStyle(color: Colors.white)),
                 onTap: () => Navigator.pop(sheetCtx, ImageSource.gallery)),
@@ -124,8 +139,10 @@ class _LenderKycScreenState extends ConsumerState<LenderKycScreen> {
   }
 
   Future<void> _submit() async {
-    if (_idNumberCtrl.text.trim().isEmpty) {
-      context.showSnack('Enter your ID number', isError: true);
+    // Validate text fields
+    final formValid = _formKey.currentState?.validate() ?? false;
+    if (!formValid) {
+      context.showSnack('Please complete required fields', isError: true);
       return;
     }
     if (_idFrontBytes == null) {
@@ -184,7 +201,7 @@ class _LenderKycScreenState extends ConsumerState<LenderKycScreen> {
       appBar: AppBar(
         title: const Text('KYC Verification'),
         leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            icon: const Icon(AppIcons.arrowLeft),
             onPressed: () => Navigator.maybePop(context)),
       ),
       body: kycAsync.when(
@@ -212,18 +229,24 @@ class _KycStatusView extends StatelessWidget {
   Widget build(BuildContext context) {
     final isApproved = kyc.status == KycStatus.approved;
     final color = isApproved ? AppColors.success : AppColors.warning;
-    final icon =
-        isApproved ? Icons.verified_rounded : Icons.hourglass_top_rounded;
+    final icon = isApproved ? AppIcons.shieldOk : Icons.hourglass_top_rounded;
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(28),
         child: GlassCard(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color, size: 56),
-              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 56),
+              ),
+              const SizedBox(height: 18),
               StatusChip.kycStatus(kyc.status.value),
               const SizedBox(height: 12),
               Text(
@@ -234,7 +257,7 @@ class _KycStatusView extends StatelessWidget {
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
-                    fontWeight: FontWeight.w600),
+                    fontWeight: FontWeight.w700),
               ),
               if (!isApproved) ...[
                 const SizedBox(height: 8),
@@ -244,7 +267,7 @@ class _KycStatusView extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 13)),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               _InfoRow('ID Type', kyc.idType),
               _InfoRow('Submitted', kyc.createdAt.toDisplayDate),
               if (kyc.rejectionReason != null) ...[
@@ -287,144 +310,217 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.lenderAccent.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: AppColors.lenderAccent, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+              if (subtitle != null)
+                Text(subtitle!,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 12)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _KycForm extends StatelessWidget {
   final _LenderKycScreenState s;
   const _KycForm(this.s);
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Submit KYC Documents',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('Required to apply for a loan',
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
-          const SizedBox(height: 24),
-          GlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Government ID',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                const Text('ID Type',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2))),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: s._idType,
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF241055),
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                      iconEnabledColor: Colors.white54,
-                      items: s._idTypes
-                          .map(
-                              (t) => DropdownMenuItem(value: t, child: Text(t)))
-                          .toList(),
-                      onChanged: (v) => s.setIdType(v),
+    return Form(
+      key: s._formKey,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionHeader(
+              icon: AppIcons.shieldOk,
+              title: 'Submit KYC Documents',
+              subtitle: 'Required to apply for a loan',
+            ),
+            const SizedBox(height: 24),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SectionHeader(
+                    icon: AppIcons.badgeCheck,
+                    title: 'Government ID',
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('ID Type',
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2))),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: s._idType,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF14183C),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
+                        iconEnabledColor: Colors.white54,
+                        items: s._idTypes
+                            .map((t) =>
+                                DropdownMenuItem(value: t, child: Text(t)))
+                            .toList(),
+                        onChanged: (v) => s.setIdType(v),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                AppTextField(
+                  const SizedBox(height: 14),
+                  AppTextField(
                     label: 'ID Number',
+                    hint: 'Enter your ${s._idType} number',
                     controller: s._idNumberCtrl,
-                    isGlass: true),
-                const SizedBox(height: 16),
-                Row(children: [
-                  Expanded(
-                      child: _PhotoBox(
-                          label: 'ID Front *',
-                          bytes: s._idFrontBytes,
-                          onTap: () => s._pickImage('front'))),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: _PhotoBox(
-                          label: 'ID Back',
-                          bytes: s._idBackBytes,
-                          onTap: () => s._pickImage('back'))),
-                ]),
-              ],
+                    isGlass: true,
+                    textCapitalization: TextCapitalization.characters,
+                    prefixIcon: const Icon(AppIcons.key,
+                        size: 18, color: Colors.white54),
+                    validator: (v) =>
+                        Validators.idNumber(v, label: '${s._idType} number'),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(
+                        child: _PhotoBox(
+                            label: 'ID Front *',
+                            bytes: s._idFrontBytes,
+                            onTap: () => s._pickImage('front'))),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: _PhotoBox(
+                            label: 'ID Back',
+                            bytes: s._idBackBytes,
+                            onTap: () => s._pickImage('back'))),
+                  ]),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          GlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Selfie Verification',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text('Take a clear photo of your face',
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12)),
-                const SizedBox(height: 16),
-                _PhotoBox(
-                    label: 'Selfie *',
-                    bytes: s._selfieBytes,
-                    onTap: () => s._pickImage('selfie'),
-                    tall: true),
-              ],
+            const SizedBox(height: 14),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SectionHeader(
+                    icon: AppIcons.camera,
+                    title: 'Selfie Verification',
+                    subtitle: 'Take a clear photo of your face',
+                  ),
+                  const SizedBox(height: 16),
+                  _PhotoBox(
+                      label: 'Selfie *',
+                      bytes: s._selfieBytes,
+                      onTap: () => s._pickImage('selfie'),
+                      tall: true),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          GlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Employment Info (optional)',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                AppTextField(
+            const SizedBox(height: 14),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SectionHeader(
+                    icon: AppIcons.building,
+                    title: 'Employment Info (optional)',
+                    subtitle: 'Helps us process your application faster',
+                  ),
+                  const SizedBox(height: 16),
+                  AppTextField(
                     label: 'Employer / Business Name',
+                    hint: 'e.g. ACME Corp, Self-employed',
                     controller: s._employerCtrl,
-                    isGlass: true),
-                const SizedBox(height: 12),
-                AppTextField(
-                  label: 'Monthly Income (₱)',
-                  controller: s._incomeCtrl,
-                  isGlass: true,
-                  keyboardType: TextInputType.number,
-                ),
-              ],
+                    isGlass: true,
+                    textCapitalization: TextCapitalization.words,
+                    prefixIcon: const Icon(AppIcons.building,
+                        size: 18, color: Colors.white54),
+                    validator: (v) {
+                      // Optional — only validate non-empty format
+                      if (v == null || v.trim().isEmpty) return null;
+                      if (v.trim().length < 2) return 'Too short';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  AppTextField(
+                    label: 'Monthly Income (₱)',
+                    hint: 'e.g. 25000',
+                    controller: s._incomeCtrl,
+                    isGlass: true,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    prefixIcon: const Icon(AppIcons.coins,
+                        size: 18, color: Colors.white54),
+                    validator: (v) {
+                      // Optional — only validate non-empty format
+                      if (v == null || v.trim().isEmpty) return null;
+                      final amt = double.tryParse(v.replaceAll(',', ''));
+                      if (amt == null || amt < 0) return 'Enter a valid amount';
+                      return null;
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          AppButton(
-            label: 'Submit KYC',
-            color: AppColors.lenderAccent,
-            width: double.infinity,
-            isLoading: s._submitting,
-            onPressed: s._submit,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-          ),
-          const SizedBox(height: 80),
-        ],
+            const SizedBox(height: 24),
+            AppButton.gradient(
+              label: 'Submit KYC',
+              icon: AppIcons.checkCircle,
+              width: double.infinity,
+              size: AppButtonSize.lg,
+              isLoading: s._submitting,
+              onPressed: s._submit,
+            ),
+            const SizedBox(height: 60),
+          ],
+        ),
       ),
     );
   }
@@ -443,34 +539,76 @@ class _PhotoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = bytes != null;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        height: tall ? 160 : 110,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        height: tall ? 170 : 120,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12),
+          color: hasImage
+              ? Colors.transparent
+              : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: bytes != null
-                  ? AppColors.lenderAccent
-                  : Colors.white.withValues(alpha: 0.15)),
+            color: hasImage
+                ? AppColors.lenderAccent
+                : Colors.white.withValues(alpha: 0.15),
+            width: hasImage ? 1.5 : 1,
+          ),
         ),
         clipBehavior: Clip.hardEdge,
-        child: bytes != null
-            ? Image.memory(bytes!, fit: BoxFit.cover, width: double.infinity)
-            : Column(
+        child: Stack(
+          children: [
+            if (hasImage)
+              Image.memory(bytes!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity)
+            else
+              Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_a_photo_outlined,
+                  Icon(AppIcons.camera,
                       color: Colors.white.withValues(alpha: 0.4), size: 28),
                   const SizedBox(height: 6),
                   Text(label,
                       style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 11),
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
                       textAlign: TextAlign.center),
                 ],
               ),
+            // Badge when image is present
+            if (hasImage)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.lenderAccent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.check_rounded, color: Colors.white, size: 11),
+                      SizedBox(width: 3),
+                      Text('Uploaded',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

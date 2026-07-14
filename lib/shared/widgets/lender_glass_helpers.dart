@@ -139,7 +139,7 @@ class LGlassSwitchTile extends StatelessWidget {
             value: value,
             onChanged: onChanged,
             activeTrackColor: accent,
-            activeThumbColor: Colors.white),
+            thumbColor: WidgetStateProperty.all(Colors.white)),
       ]),
     );
   }

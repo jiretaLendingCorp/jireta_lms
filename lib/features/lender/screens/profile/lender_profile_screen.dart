@@ -1,4 +1,9 @@
 // lib/features/lender/screens/profile/lender_profile_screen.dart
+//
+// REDESIGN (Task 7-A): Material 3 polish, per-section Form state with
+// Validators on all fields, premium avatar with gradient ring + camera badge,
+// consistent 14px radius, AppIcons for visual consistency. All business logic
+// (avatar upload, profile update, password change, dialogs) preserved.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,12 +17,12 @@ import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/models/app_user.dart';
 import '../../../../shared/utils/extensions.dart';
+import '../../../../shared/utils/validators.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/lender_glass_helpers.dart';
-import '../../../auth/data/auth_repository.dart';
 
 class LenderProfileScreen extends ConsumerStatefulWidget {
   const LenderProfileScreen({super.key});
@@ -36,7 +41,11 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
   final _newPassCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
 
+  final _profileFormKey = GlobalKey<FormState>();
+  final _securityFormKey = GlobalKey<FormState>();
+
   bool _saving = false;
+  bool _savingPass = false;
   bool _uploadingAvatar = false;
   bool _notifLoan = true;
   bool _notifPayment = true;
@@ -113,21 +122,28 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
     }
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF16245C),
+      backgroundColor: const Color(0xFF10173A),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-              width: 36,
+              width: 40,
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(2))),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text('Change Profile Photo',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+          ),
           ListTile(
-              leading:
-                  const Icon(Icons.camera_alt_outlined, color: Colors.white),
+              leading: const Icon(AppIcons.camera, color: _accent),
               title: const Text('Take Photo',
                   style: TextStyle(color: Colors.white)),
               onTap: () {
@@ -135,8 +151,7 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                 _pickAvatar(ImageSource.camera);
               }),
           ListTile(
-              leading:
-                  const Icon(Icons.photo_library_outlined, color: Colors.white),
+              leading: const Icon(AppIcons.image, color: _accent),
               title: const Text('Choose from Gallery',
                   style: TextStyle(color: Colors.white)),
               onTap: () {
@@ -150,8 +165,8 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
   }
 
   Future<void> _save() async {
-    if (_firstCtrl.text.trim().isEmpty || _lastCtrl.text.trim().isEmpty) {
-      context.showSnack('First and last name are required', isError: true);
+    if (!(_profileFormKey.currentState?.validate() ?? false)) {
+      context.showSnack('Please fix the errors before saving', isError: true);
       return;
     }
     setState(() => _saving = true);
@@ -172,19 +187,15 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
   }
 
   Future<void> _changePass() async {
-    if (_newPassCtrl.text != _confirmCtrl.text) {
-      context.showSnack('Passwords do not match', isError: true);
+    if (!(_securityFormKey.currentState?.validate() ?? false)) {
+      context.showSnack('Please fix the password fields', isError: true);
       return;
     }
-    if (_newPassCtrl.text.length < 8) {
-      context.showSnack('At least 8 characters required', isError: true);
-      return;
-    }
-    setState(() => _saving = true);
+    setState(() => _savingPass = true);
     final err = await ref
         .read(authProvider.notifier)
         .changePassword(_oldPassCtrl.text, _newPassCtrl.text);
-    setState(() => _saving = false);
+    setState(() => _savingPass = false);
     if (mounted) {
       context.showSnack(err ?? 'Password changed', isError: err != null);
       if (err == null) {
@@ -299,11 +310,26 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                   GestureDetector(
                     onTap: _showAvatarPicker,
                     child: Stack(children: [
-                      AppAvatar(
-                        imageUrl: user?.avatarUrl,
-                        name: user?.displayName ?? '',
-                        size: 56,
-                        backgroundColor: _accent,
+                      // Gradient ring around avatar
+                      Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              _accent,
+                              _accent.withValues(alpha: 0.4),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: AppAvatar(
+                          imageUrl: user?.avatarUrl,
+                          name: user?.displayName ?? '',
+                          size: 56,
+                          backgroundColor: const Color(0xFF14183C),
+                        ),
                       ),
                       Positioned(
                           right: 0,
@@ -321,7 +347,7 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                                     padding: EdgeInsets.all(5),
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2, color: Colors.white))
-                                : const Icon(Icons.camera_alt_rounded,
+                                : const Icon(AppIcons.camera,
                                     color: Colors.white, size: 12),
                           )),
                     ]),
@@ -389,50 +415,59 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                 accent: _accent,
                 onToggle: () => setState(
                     () => _editProfileExpanded = !_editProfileExpanded),
-                child: Column(children: [
-                  const SizedBox(height: 16),
-                  Row(children: [
-                    Expanded(
-                        child: AppTextField(
-                            label: 'First Name',
-                            controller: _firstCtrl,
-                            isGlass: true,
-                            textCapitalization: TextCapitalization.words,
-                            validator: (v) =>
-                                v == null || v.isEmpty ? 'Required' : null)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child: AppTextField(
-                            label: 'Last Name',
-                            controller: _lastCtrl,
-                            isGlass: true,
-                            textCapitalization: TextCapitalization.words,
-                            validator: (v) =>
-                                v == null || v.isEmpty ? 'Required' : null)),
+                child: Form(
+                  key: _profileFormKey,
+                  child: Column(children: [
+                    const SizedBox(height: 16),
+                    Row(children: [
+                      Expanded(
+                          child: AppTextField(
+                              label: 'First Name',
+                              controller: _firstCtrl,
+                              isGlass: true,
+                              textCapitalization: TextCapitalization.words,
+                              validator: Validators.firstName)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: AppTextField(
+                              label: 'Last Name',
+                              controller: _lastCtrl,
+                              isGlass: true,
+                              textCapitalization: TextCapitalization.words,
+                              validator: Validators.lastName)),
+                    ]),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                        label: 'Phone Number',
+                        controller: _phoneCtrl,
+                        isGlass: true,
+                        keyboardType: TextInputType.phone,
+                        hint: '09XXXXXXXXX',
+                        prefixIcon: const Icon(AppIcons.phone,
+                            size: 18, color: Colors.white54),
+                        validator: Validators.phone),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                        label: 'Address',
+                        controller: _addressCtrl,
+                        isGlass: true,
+                        hint: 'Street, City, Province',
+                        maxLines: 2,
+                        prefixIcon: const Icon(AppIcons.mapPin,
+                            size: 18, color: Colors.white54),
+                        validator: Validators.address),
+                    const SizedBox(height: 16),
+                    AppButton.gradient(
+                        label: 'Save Changes',
+                        icon: AppIcons.check,
+                        color: _accent,
+                        textColor: Colors.white,
+                        isLoading: _saving,
+                        onPressed: _save,
+                        width: double.infinity,
+                        size: AppButtonSize.lg),
                   ]),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                      label: 'Phone Number',
-                      controller: _phoneCtrl,
-                      isGlass: true,
-                      keyboardType: TextInputType.phone,
-                      hint: '09XXXXXXXXX'),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                      label: 'Address',
-                      controller: _addressCtrl,
-                      isGlass: true,
-                      hint: 'Street, City, Province',
-                      maxLines: 2),
-                  const SizedBox(height: 16),
-                  AppButton(
-                      label: 'Save Changes',
-                      color: _accent,
-                      textColor: Colors.white,
-                      isLoading: _saving,
-                      onPressed: _save,
-                      width: double.infinity),
-                ]),
+                ),
               ),
               const SizedBox(height: 12),
               LGlassCollapsibleSection(
@@ -442,35 +477,51 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                 accent: _accent,
                 onToggle: () =>
                     setState(() => _securityExpanded = !_securityExpanded),
-                child: Column(children: [
-                  const SizedBox(height: 16),
-                  AppTextField(
-                      label: 'Current Password',
-                      controller: _oldPassCtrl,
-                      isGlass: true,
-                      obscureText: true),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                      label: 'New Password',
-                      controller: _newPassCtrl,
-                      isGlass: true,
-                      obscureText: true,
-                      helperText: 'Minimum 8 characters'),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                      label: 'Confirm New Password',
-                      controller: _confirmCtrl,
-                      isGlass: true,
-                      obscureText: true),
-                  const SizedBox(height: 16),
-                  AppButton(
-                      label: 'Change Password',
-                      color: _accent,
-                      textColor: Colors.white,
-                      isLoading: _saving,
-                      onPressed: _changePass,
-                      width: double.infinity),
-                ]),
+                child: Form(
+                  key: _securityFormKey,
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        AppTextField(
+                          label: 'Current Password',
+                          controller: _oldPassCtrl,
+                          isGlass: true,
+                          obscureText: true,
+                          validator: (v) => Validators.compose(v, [
+                            (v) => Validators.required(v,
+                                label: 'Current password'),
+                          ]),
+                        ),
+                        const SizedBox(height: 12),
+                        AppTextField(
+                            label: 'New Password',
+                            controller: _newPassCtrl,
+                            isGlass: true,
+                            obscureText: true,
+                            helperText:
+                                'Minimum 8 characters, 1 letter + 1 number',
+                            validator: Validators.strongPassword),
+                        const SizedBox(height: 12),
+                        AppTextField(
+                            label: 'Confirm New Password',
+                            controller: _confirmCtrl,
+                            isGlass: true,
+                            obscureText: true,
+                            validator: (v) => Validators.confirmPassword(
+                                v, _newPassCtrl.text)),
+                        const SizedBox(height: 16),
+                        AppButton.gradient(
+                            label: 'Change Password',
+                            icon: AppIcons.key,
+                            color: _accent,
+                            textColor: Colors.white,
+                            isLoading: _savingPass,
+                            onPressed: _changePass,
+                            width: double.infinity,
+                            size: AppButtonSize.lg),
+                      ]),
+                ),
               ),
               const SizedBox(height: 12),
               LGlassCollapsibleSection(
@@ -560,7 +611,7 @@ class _LenderProfileScreenState extends ConsumerState<LenderProfileScreen>
                   ),
                   const LGlassDivider(),
                   LGlassTapTile(
-                    icon: Icons.info_outline_rounded,
+                    icon: AppIcons.info,
                     label: 'App Version',
                     trailing: Text('v1.0.0',
                         style: TextStyle(

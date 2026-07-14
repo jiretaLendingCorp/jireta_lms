@@ -1,17 +1,25 @@
 // lib/features/rider/screens/profile/rider_profile_screen.dart
-// Fixed: collapsible sections, working avatar upload, white card design on gradient bg.
+//
+// Redesigned (Task 8-A): Premium Material 3 glassmorphism UI on rider navy
+// gradient. All form fields wired to `Validators` with inline error feedback.
+// Business logic, controllers, providers, avatar upload, password change —
+// all preserved.
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../../../core/constants/app_icons.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/utils/extensions.dart';
+import '../../../../shared/utils/validators.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/glass_card.dart';
 import '../../../auth/data/auth_repository.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class RiderProfileScreen extends ConsumerStatefulWidget {
   const RiderProfileScreen({super.key});
@@ -27,6 +35,10 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
   final _oldPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+
+  final _profileFormKey = GlobalKey<FormState>();
+  final _passwordFormKey = GlobalKey<FormState>();
+
   bool _saving = false;
   bool _uploadingAvatar = false;
   bool _showEditProfile = false;
@@ -97,39 +109,40 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
     }
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF0D2060),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (sheetCtx) => SafeArea(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const SizedBox(height: 8),
         Container(
-            width: 36,
+            width: 42,
             height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2))),
+                color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+        _SheetOption(
+          icon: AppIcons.camera,
+          label: 'Take Photo',
+          onTap: () {
+            Navigator.pop(sheetCtx);
+            _pickAvatar(ImageSource.camera);
+          },
+        ),
+        _SheetOption(
+          icon: AppIcons.image,
+          label: 'Choose from Gallery',
+          onTap: () {
+            Navigator.pop(sheetCtx);
+            _pickAvatar(ImageSource.gallery);
+          },
+        ),
         const SizedBox(height: 12),
-        ListTile(
-            leading: const Icon(Icons.camera_alt_outlined),
-            title: const Text('Take Photo'),
-            onTap: () {
-              Navigator.pop(sheetCtx);
-              _pickAvatar(ImageSource.camera);
-            }),
-        ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Choose from Gallery'),
-            onTap: () {
-              Navigator.pop(sheetCtx);
-              _pickAvatar(ImageSource.gallery);
-            }),
-        const SizedBox(height: 8),
       ])),
     );
   }
 
   Future<void> _saveProfile() async {
+    if (!(_profileFormKey.currentState?.validate() ?? false)) return;
     if (_firstCtrl.text.trim().isEmpty || _lastCtrl.text.trim().isEmpty) {
       context.showSnack('First and last name are required', isError: true);
       return;
@@ -151,6 +164,7 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
   }
 
   Future<void> _changePassword() async {
+    if (!(_passwordFormKey.currentState?.validate() ?? false)) return;
     if (_newPassCtrl.text.length < 8) {
       context.showSnack('Password must be at least 8 characters',
           isError: true);
@@ -192,21 +206,34 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
               GestureDetector(
                 onTap: _showAvatarPicker,
                 child: Stack(children: [
-                  AppAvatar(
-                      imageUrl: user?.avatarUrl,
-                      name: user?.displayName ?? '',
-                      size: 80,
-                      backgroundColor: AppColors.riderAccent),
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.riderAccent.withValues(alpha: 0.35),
+                          blurRadius: 28,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: AppAvatar(
+                        imageUrl: user?.avatarUrl,
+                        name: user?.displayName ?? '',
+                        size: 88,
+                        backgroundColor: AppColors.riderAccent),
+                  ),
                   Positioned(
                       bottom: 0,
                       right: 0,
                       child: Container(
-                        width: 28,
-                        height: 28,
+                        width: 30,
+                        height: 30,
                         decoration: BoxDecoration(
                             color: AppColors.riderAccent,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2)),
+                            border:
+                                Border.all(color: Colors.white, width: 2.5)),
                         child: _uploadingAvatar
                             ? const Padding(
                                 padding: EdgeInsets.all(6),
@@ -217,133 +244,162 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
                       )),
                 ]),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(user?.displayName ?? '',
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(height: 2),
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2)),
+              const SizedBox(height: 4),
               Text(user?.email ?? '',
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.65),
                       fontSize: 13)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 const _Badge('Rider', AppColors.riderAccent),
                 const SizedBox(width: 8),
-                _Badge(user?.isActive == true ? 'Active' : 'Inactive',
-                    user?.isActive == true ? Colors.green : Colors.red),
+                _Badge(
+                    user?.isActive == true ? 'Active' : 'Inactive',
+                    user?.isActive == true
+                        ? AppColors.success
+                        : AppColors.error),
               ]),
               const SizedBox(height: 24),
 
               // Info card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.20))),
+              GlassCard(
+                padding: const EdgeInsets.all(18),
                 child: Column(children: [
                   _InfoRow('Account ID',
                       user?.id.substring(0, 8).toUpperCase() ?? '—'),
-                  const Divider(height: 16),
+                  const _GlassDivider(),
                   _InfoRow('Joined', user?.createdAt.toDisplayDate ?? '—'),
                   if (user?.phone != null) ...[
-                    const Divider(height: 16),
-                    _InfoRow('Phone', user!.phone!)
+                    const _GlassDivider(),
+                    _InfoRow('Phone', user!.phone!),
                   ],
-                  if (user?.address != null) ...[
-                    const Divider(height: 16),
-                    _InfoRow('Address', user!.address!)
+                  if (user?.address != null &&
+                      user!.address!.trim().isNotEmpty) ...[
+                    const _GlassDivider(),
+                    _InfoRow('Address', user.address!),
                   ],
                 ]),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               // Collapsible: Edit Profile
               _CollapsibleCard(
-                icon: Icons.edit_outlined,
+                icon: AppIcons.edit,
                 title: 'Edit Profile',
                 accentColor: AppColors.riderAccent,
                 isOpen: _showEditProfile,
                 onToggle: () =>
                     setState(() => _showEditProfile = !_showEditProfile),
-                child: Column(children: [
-                  const Divider(height: 1),
-                  const SizedBox(height: 14),
-                  Row(children: [
-                    Expanded(
-                        child: AppTextField(
-                            label: 'First Name',
-                            controller: _firstCtrl,
-                            maxLength: 50,
-                            textCapitalization: TextCapitalization.words)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: AppTextField(
-                            label: 'Last Name',
-                            controller: _lastCtrl,
-                            maxLength: 50,
-                            textCapitalization: TextCapitalization.words)),
-                  ]),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                      label: 'Phone',
-                      controller: _phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      maxLength: 11,
-                      hint: '09XXXXXXXXX'),
-                  const SizedBox(height: 14),
-                  AppButton(
-                      label: 'Save Changes',
-                      isLoading: _saving,
-                      onPressed: _saveProfile,
-                      width: double.infinity),
-                ]),
+                child: Form(
+                  key: _profileFormKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 14),
+                      Row(children: [
+                        Expanded(
+                            child: AppTextField(
+                                label: 'First Name',
+                                controller: _firstCtrl,
+                                isGlass: true,
+                                maxLength: 50,
+                                textCapitalization: TextCapitalization.words,
+                                validator: Validators.firstName)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: AppTextField(
+                                label: 'Last Name',
+                                controller: _lastCtrl,
+                                isGlass: true,
+                                maxLength: 50,
+                                textCapitalization: TextCapitalization.words,
+                                validator: Validators.lastName)),
+                      ]),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                          label: 'Phone',
+                          controller: _phoneCtrl,
+                          isGlass: true,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 13,
+                          hint: '09XXXXXXXXX',
+                          validator: Validators.optionalPhone),
+                      const SizedBox(height: 16),
+                      AppButton(
+                          label: 'Save Changes',
+                          isLoading: _saving,
+                          color: AppColors.riderAccent,
+                          textColor: Colors.black87,
+                          size: AppButtonSize.lg,
+                          onPressed: _saveProfile,
+                          width: double.infinity),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
               // Collapsible: Change Password
               _CollapsibleCard(
-                icon: Icons.lock_outline_rounded,
+                icon: AppIcons.lock,
                 title: 'Change Password',
                 accentColor: AppColors.riderAccent,
                 isOpen: _showChangePassword,
                 onToggle: () =>
                     setState(() => _showChangePassword = !_showChangePassword),
-                child: Column(children: [
-                  const Divider(height: 1),
-                  const SizedBox(height: 14),
-                  AppTextField(
-                      label: 'Current Password',
-                      controller: _oldPassCtrl,
-                      obscureText: true,
-                      maxLength: 64),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                      label: 'New Password',
-                      controller: _newPassCtrl,
-                      obscureText: true,
-                      maxLength: 64,
-                      helperText: 'Minimum 8 characters'),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                      label: 'Confirm Password',
-                      controller: _confirmCtrl,
-                      obscureText: true,
-                      maxLength: 64),
-                  const SizedBox(height: 14),
-                  AppButton(
-                      label: 'Change Password',
-                      isLoading: _saving,
-                      onPressed: _changePassword,
-                      width: double.infinity),
-                ]),
+                child: Form(
+                  key: _passwordFormKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 14),
+                      AppTextField(
+                          label: 'Current Password',
+                          controller: _oldPassCtrl,
+                          isGlass: true,
+                          obscureText: true,
+                          maxLength: 64,
+                          validator: (v) => Validators.required(v,
+                              label: 'Current password')),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                          label: 'New Password',
+                          controller: _newPassCtrl,
+                          isGlass: true,
+                          obscureText: true,
+                          maxLength: 64,
+                          helperText: 'Min 8 chars, 1 letter & 1 number',
+                          validator: Validators.strongPassword),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                          label: 'Confirm Password',
+                          controller: _confirmCtrl,
+                          isGlass: true,
+                          obscureText: true,
+                          maxLength: 64,
+                          validator: (v) =>
+                              Validators.confirmPassword(v, _newPassCtrl.text)),
+                      const SizedBox(height: 16),
+                      AppButton(
+                          label: 'Change Password',
+                          isLoading: _saving,
+                          color: AppColors.riderAccent,
+                          textColor: Colors.black87,
+                          size: AppButtonSize.lg,
+                          onPressed: _changePassword,
+                          width: double.infinity),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
               // Terms
               _WhiteTile(
@@ -389,8 +445,12 @@ class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen>
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () => ref.read(authProvider.notifier).signOut(),
-                    icon: const Icon(Icons.logout_rounded, size: 18),
-                    label: const Text('Sign Out'),
+                    icon: const Icon(AppIcons.logout,
+                        size: 18, color: AppColors.error),
+                    label: const Text('Sign Out',
+                        style: TextStyle(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
                         side: BorderSide(
@@ -415,17 +475,12 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(20)),
+            color: color.withValues(alpha: 0.20),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.4))),
         child: Text(label,
             style: TextStyle(
-                color: color == Colors.green
-                    ? Colors.greenAccent
-                    : color == Colors.red
-                        ? Colors.redAccent
-                        : color,
-                fontSize: 12,
-                fontWeight: FontWeight.w600)),
+                color: color, fontSize: 12, fontWeight: FontWeight.w600)),
       );
 }
 
@@ -436,15 +491,23 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) =>
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(label,
-            style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55), fontSize: 13)),
         Flexible(
             child: Text(value,
                 style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87),
+                    color: Colors.white),
                 textAlign: TextAlign.end)),
       ]);
+}
+
+class _GlassDivider extends StatelessWidget {
+  const _GlassDivider();
+  @override
+  Widget build(BuildContext context) => Divider(
+      height: 1, indent: 0, color: Colors.white.withValues(alpha: 0.08));
 }
 
 class _CollapsibleCard extends StatelessWidget {
@@ -485,7 +548,7 @@ class _CollapsibleCard extends StatelessWidget {
                       Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                              color: accentColor.withValues(alpha: 0.1),
+                              color: accentColor.withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(8)),
                           child: Icon(icon, size: 18, color: accentColor)),
                       const SizedBox(width: 12),
@@ -498,8 +561,8 @@ class _CollapsibleCard extends StatelessWidget {
                       AnimatedRotation(
                           turns: isOpen ? 0.5 : 0,
                           duration: const Duration(milliseconds: 250),
-                          child: const Icon(Icons.expand_more_rounded,
-                              color: Colors.black38)),
+                          child: Icon(Icons.expand_more_rounded,
+                              color: Colors.white.withValues(alpha: 0.55))),
                     ])),
               ),
               AnimatedSize(
@@ -536,7 +599,7 @@ class _WhiteTile extends StatelessWidget {
           leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.1),
+                  color: accentColor.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(8)),
               child: Icon(icon, size: 18, color: accentColor)),
           title: Text(title,
@@ -545,12 +608,58 @@ class _WhiteTile extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: Colors.white)),
           subtitle: Text(subtitle,
-              style: const TextStyle(fontSize: 12, color: Colors.white60)),
-          trailing:
-              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55), fontSize: 12)),
+          trailing: Icon(Icons.chevron_right_rounded,
+              color: Colors.white.withValues(alpha: 0.4)),
           onTap: onTap,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
+}
+
+// ── Bottom sheet option ───────────────────────────────────────────────────
+class _SheetOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _SheetOption(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.riderAccent.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.riderAccent, size: 18),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500)),
+              ),
+              Icon(AppIcons.chevronRight,
+                  color: Colors.white.withValues(alpha: 0.4), size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

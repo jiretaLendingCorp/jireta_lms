@@ -5,6 +5,10 @@
 //         dialogs instead of routing to random pages or doing nothing.
 // FIX #5: After saving profile, stays on this screen (no redirect to home).
 // All glassmorphism preserved.
+//
+// Redesigned (Task 8-A): All form fields wired to `Validators` with proper
+// inline error feedback (each collapsible section wrapped in a Form widget
+// + GlobalKey). Business logic, controllers, providers, dialogs unchanged.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +19,7 @@ import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/utils/extensions.dart';
+import '../../../../shared/utils/validators.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -39,6 +44,10 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
   final _distanceCtrl = TextEditingController();
   final _fuelPriceCtrl = TextEditingController(text: '64.00');
   final _consumptionCtrl = TextEditingController(text: '40');
+
+  final _profileFormKey = GlobalKey<FormState>();
+  final _securityFormKey = GlobalKey<FormState>();
+  final _gasFormKey = GlobalKey<FormState>();
 
   double? _estimatedGas;
   bool _saving = false;
@@ -74,6 +83,7 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
   }
 
   Future<void> _save() async {
+    if (!(_profileFormKey.currentState?.validate() ?? false)) return;
     if (_firstCtrl.text.trim().isEmpty || _lastCtrl.text.trim().isEmpty) {
       context.showSnack('First and last name are required', isError: true);
       return;
@@ -125,40 +135,38 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
     }
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF16245C),
+      backgroundColor: const Color(0xFF0D2060),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => SafeArea(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
-            width: 36,
+            width: 42,
             height: 4,
-            margin: const EdgeInsets.symmetric(vertical: 12),
+            margin: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
                 color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-        ListTile(
-            leading: const Icon(Icons.camera_alt_outlined, color: Colors.white),
-            title:
-                const Text('Take Photo', style: TextStyle(color: Colors.white)),
+        _SheetOption(
+            icon: AppIcons.camera,
+            label: 'Take Photo',
             onTap: () {
               Navigator.pop(ctx);
               _pickAvatar(ImageSource.camera);
             }),
-        ListTile(
-            leading:
-                const Icon(Icons.photo_library_outlined, color: Colors.white),
-            title: const Text('Choose from Gallery',
-                style: TextStyle(color: Colors.white)),
+        _SheetOption(
+            icon: AppIcons.image,
+            label: 'Choose from Gallery',
             onTap: () {
               Navigator.pop(ctx);
               _pickAvatar(ImageSource.gallery);
             }),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
       ])),
     );
   }
 
   Future<void> _changePass() async {
+    if (!(_securityFormKey.currentState?.validate() ?? false)) return;
     if (_newPassCtrl.text != _confirmCtrl.text) {
       context.showSnack('Passwords do not match', isError: true);
       return;
@@ -184,6 +192,7 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
   }
 
   void _computeGas() {
+    if (!(_gasFormKey.currentState?.validate() ?? false)) return;
     final distance = double.tryParse(_distanceCtrl.text);
     final price = double.tryParse(_fuelPriceCtrl.text);
     final consumption = double.tryParse(_consumptionCtrl.text);
@@ -381,51 +390,56 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
             expanded: _editProfileExpanded,
             onToggle: () =>
                 setState(() => _editProfileExpanded = !_editProfileExpanded),
-            child: Column(children: [
-              const SizedBox(height: 16),
-              Row(children: [
-                Expanded(
-                    child: AppTextField(
-                        label: 'First Name',
-                        controller: _firstCtrl,
-                        isGlass: true,
-                        textCapitalization: TextCapitalization.words,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null)),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: AppTextField(
-                        label: 'Last Name',
-                        controller: _lastCtrl,
-                        isGlass: true,
-                        textCapitalization: TextCapitalization.words,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null)),
+            child: Form(
+              key: _profileFormKey,
+              child: Column(children: [
+                const SizedBox(height: 16),
+                Row(children: [
+                  Expanded(
+                      child: AppTextField(
+                          label: 'First Name',
+                          controller: _firstCtrl,
+                          isGlass: true,
+                          textCapitalization: TextCapitalization.words,
+                          validator: Validators.firstName)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: AppTextField(
+                          label: 'Last Name',
+                          controller: _lastCtrl,
+                          isGlass: true,
+                          textCapitalization: TextCapitalization.words,
+                          validator: Validators.lastName)),
+                ]),
+                const SizedBox(height: 14),
+                AppTextField(
+                    label: 'Phone Number',
+                    controller: _phoneCtrl,
+                    isGlass: true,
+                    keyboardType: TextInputType.phone,
+                    hint: '09XXXXXXXXX',
+                    validator: Validators.optionalPhone),
+                const SizedBox(height: 14),
+                AppTextField(
+                    label: 'Address',
+                    controller: _addressCtrl,
+                    isGlass: true,
+                    maxLines: 2,
+                    maxLength: 200,
+                    textCapitalization: TextCapitalization.sentences,
+                    validator: (v) =>
+                        Validators.maxLength(v, 200, label: 'Address')),
+                const SizedBox(height: 16),
+                AppButton(
+                    label: 'Save Changes',
+                    color: accent,
+                    textColor: Colors.black87,
+                    size: AppButtonSize.lg,
+                    isLoading: _saving,
+                    onPressed: _save,
+                    width: double.infinity),
               ]),
-              const SizedBox(height: 12),
-              AppTextField(
-                  label: 'Phone Number',
-                  controller: _phoneCtrl,
-                  isGlass: true,
-                  keyboardType: TextInputType.phone,
-                  hint: '09XXXXXXXXX'),
-              const SizedBox(height: 12),
-              AppTextField(
-                  label: 'Address',
-                  controller: _addressCtrl,
-                  isGlass: true,
-                  maxLines: 2,
-                  maxLength: 200,
-                  textCapitalization: TextCapitalization.sentences),
-              const SizedBox(height: 16),
-              AppButton(
-                  label: 'Save Changes',
-                  color: accent,
-                  textColor: Colors.black87,
-                  isLoading: _saving,
-                  onPressed: _save,
-                  width: double.infinity),
-            ]),
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -436,35 +450,44 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
             expanded: _securityExpanded,
             onToggle: () =>
                 setState(() => _securityExpanded = !_securityExpanded),
-            child: Column(children: [
-              const SizedBox(height: 16),
-              AppTextField(
-                  label: 'Current Password',
-                  controller: _oldPassCtrl,
-                  isGlass: true,
-                  obscureText: true),
-              const SizedBox(height: 12),
-              AppTextField(
-                  label: 'New Password',
-                  controller: _newPassCtrl,
-                  isGlass: true,
-                  obscureText: true,
-                  helperText: 'Minimum 8 characters'),
-              const SizedBox(height: 12),
-              AppTextField(
-                  label: 'Confirm New Password',
-                  controller: _confirmCtrl,
-                  isGlass: true,
-                  obscureText: true),
-              const SizedBox(height: 16),
-              AppButton(
-                  label: 'Change Password',
-                  color: accent,
-                  textColor: Colors.black87,
-                  isLoading: _saving,
-                  onPressed: _changePass,
-                  width: double.infinity),
-            ]),
+            child: Form(
+              key: _securityFormKey,
+              child: Column(children: [
+                const SizedBox(height: 16),
+                AppTextField(
+                    label: 'Current Password',
+                    controller: _oldPassCtrl,
+                    isGlass: true,
+                    obscureText: true,
+                    validator: (v) =>
+                        Validators.required(v, label: 'Current password')),
+                const SizedBox(height: 14),
+                AppTextField(
+                    label: 'New Password',
+                    controller: _newPassCtrl,
+                    isGlass: true,
+                    obscureText: true,
+                    helperText: 'Minimum 8 characters, 1 letter & 1 number',
+                    validator: Validators.strongPassword),
+                const SizedBox(height: 14),
+                AppTextField(
+                    label: 'Confirm New Password',
+                    controller: _confirmCtrl,
+                    isGlass: true,
+                    obscureText: true,
+                    validator: (v) =>
+                        Validators.confirmPassword(v, _newPassCtrl.text)),
+                const SizedBox(height: 16),
+                AppButton(
+                    label: 'Change Password',
+                    color: accent,
+                    textColor: Colors.black87,
+                    size: AppButtonSize.lg,
+                    isLoading: _saving,
+                    onPressed: _changePass,
+                    width: double.infinity),
+              ]),
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -480,31 +503,47 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
                       color: Colors.white.withValues(alpha: 0.55),
                       fontSize: 12)),
               const SizedBox(height: 16),
-              AppTextField(
-                  label: 'Distance to Lender (km)',
-                  controller: _distanceCtrl,
-                  isGlass: true,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  hint: 'e.g. 12.5'),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                    child: AppTextField(
-                        label: 'Fuel Price (₱/L)',
-                        controller: _fuelPriceCtrl,
+              Form(
+                key: _gasFormKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppTextField(
+                        label: 'Distance to Lender (km)',
+                        controller: _distanceCtrl,
                         isGlass: true,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true))),
-                const SizedBox(width: 12),
-                Expanded(
-                    child: AppTextField(
-                        label: 'Fuel Economy (km/L)',
-                        controller: _consumptionCtrl,
-                        isGlass: true,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true))),
-              ]),
+                            decimal: true),
+                        hint: 'e.g. 12.5',
+                        validator: (v) =>
+                            Validators.amount(v, label: 'Distance', min: 0.1)),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(
+                          child: AppTextField(
+                              label: 'Fuel Price (₱/L)',
+                              controller: _fuelPriceCtrl,
+                              isGlass: true,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              validator: (v) => Validators.amount(v,
+                                  label: 'Fuel price', min: 0.01))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: AppTextField(
+                              label: 'Fuel Economy (km/L)',
+                              controller: _consumptionCtrl,
+                              isGlass: true,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
+                              validator: (v) => Validators.amount(v,
+                                  label: 'Fuel economy', min: 1))),
+                    ]),
+                  ],
+                ),
+              ),
               const SizedBox(height: 16),
               AppButton(
                   label: 'Calculate',
@@ -514,21 +553,24 @@ class _RiderSettingsScreenState extends ConsumerState<RiderSettingsScreen> {
                   width: double.infinity),
               if (_estimatedGas != null) ...[
                 const SizedBox(height: 16),
-                Container(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOut,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: accent.withValues(alpha: 0.3))),
+                      borderRadius: BorderRadius.circular(14),
+                      border:
+                          Border.all(color: accent.withValues(alpha: 0.35))),
                   child: Row(children: [
-                    const Icon(AppIcons.coins, color: accent, size: 20),
+                    const Icon(AppIcons.coins, color: accent, size: 22),
                     const SizedBox(width: 12),
                     Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Estimated Gas Cost',
                               style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  color: Colors.white.withValues(alpha: 0.65),
                                   fontSize: 12)),
                           Text('₱${_estimatedGas!.toStringAsFixed(2)}',
                               style: const TextStyle(
@@ -751,7 +793,7 @@ class _GlassSwitchTile extends StatelessWidget {
             value: value,
             onChanged: onChanged,
             activeTrackColor: AppColors.riderAccent,
-            activeThumbColor: Colors.white),
+            thumbColor: WidgetStateProperty.all(Colors.white)),
       ]),
     );
   }
@@ -860,6 +902,51 @@ class _GlassStatusBadge extends StatelessWidget {
             style: TextStyle(
                 color: color, fontSize: 11, fontWeight: FontWeight.w600)),
       ]),
+    );
+  }
+}
+
+// ── Bottom sheet option ───────────────────────────────────────────────────
+class _SheetOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _SheetOption(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.riderAccent.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: AppColors.riderAccent, size: 18),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500)),
+              ),
+              Icon(AppIcons.chevronRight,
+                  color: Colors.white.withValues(alpha: 0.4), size: 18),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

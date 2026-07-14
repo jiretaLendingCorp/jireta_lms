@@ -1,8 +1,13 @@
 // lib/features/auth/screens/register_screen.dart
+//
+// Premium Material 3 redesign — register screen.
+// NO business logic changes; same authProvider.register() call, same routes.
+// All form fields now use Validators class with proper error messages.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -53,10 +58,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       firstDate: DateTime(1940),
       lastDate: DateTime(now.year - 18),
       helpText: 'Select your birthday',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(
+                primary: AppColors.accent,
+                onPrimary: Colors.white,
+              ),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) {
       _bdayCtrl.text =
           '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      setState(() {});
     }
   }
 
@@ -96,11 +111,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final cardBg = isDark ? const Color(0xFF1E2235) : Colors.white;
     final bodyColor = isDark ? Colors.white70 : const Color(0xFF374151);
-    final headColor = isDark ? Colors.white : const Color(0xFF111827);
+    final headColor = isDark ? Colors.white : const Color(0xFF0F1117);
     final subColor = isDark ? Colors.white54 : const Color(0xFF6B7280);
     final borderCol = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
     final fillColor =
-        isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF9FAFB);
+        isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF7F8FA);
+    final iconColor = isDark ? Colors.white38 : const Color(0xFF9CA3AF);
 
     Widget form = Form(
       key: _formKey,
@@ -109,47 +125,63 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('Create Account',
-              style: TextStyle(
-                  color: headColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3)),
-          const SizedBox(height: 4),
+              style: GoogleFonts.spaceGrotesk(
+                color: headColor,
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+                height: 1.15,
+              )),
+          const SizedBox(height: 6),
           Text('Join Jireta Loans as a borrower',
-              style: TextStyle(color: subColor, fontSize: 14)),
-          const SizedBox(height: 28),
+              style: TextStyle(color: subColor, fontSize: 14, height: 1.5)),
+          const SizedBox(height: 30),
           Row(children: [
             Expanded(
                 child: _Field(
-                    label: 'First Name',
-                    ctrl: _firstCtrl,
-                    fillColor: fillColor,
-                    borderColor: borderCol,
-                    textColor: bodyColor,
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) =>
-                        Validators.required(v, label: 'First name'))),
-            const SizedBox(width: 10),
-            Expanded(
-                child: _Field(
-                    label: 'Last Name',
-                    ctrl: _lastCtrl,
-                    fillColor: fillColor,
-                    borderColor: borderCol,
-                    textColor: bodyColor,
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) =>
-                        Validators.required(v, label: 'Last name'))),
-          ]),
-          const SizedBox(height: 12),
-          _Field(
-              label: 'Middle Name (optional)',
-              ctrl: _middleCtrl,
+              label: 'First Name',
+              ctrl: _firstCtrl,
               fillColor: fillColor,
               borderColor: borderCol,
               textColor: bodyColor,
-              textCapitalization: TextCapitalization.words),
-          const SizedBox(height: 12),
+              iconColor: iconColor,
+              hint: 'Juan',
+              textCapitalization: TextCapitalization.words,
+              prefixIcon: Icon(Icons.person_outline_rounded,
+                  size: 18, color: iconColor),
+              validator: Validators.firstName,
+            )),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _Field(
+              label: 'Last Name',
+              ctrl: _lastCtrl,
+              fillColor: fillColor,
+              borderColor: borderCol,
+              textColor: bodyColor,
+              iconColor: iconColor,
+              hint: 'Dela Cruz',
+              textCapitalization: TextCapitalization.words,
+              prefixIcon: Icon(Icons.person_outline_rounded,
+                  size: 18, color: iconColor),
+              validator: Validators.lastName,
+            )),
+          ]),
+          const SizedBox(height: 14),
+          _Field(
+            label: 'Middle Name (optional)',
+            ctrl: _middleCtrl,
+            fillColor: fillColor,
+            borderColor: borderCol,
+            textColor: bodyColor,
+            iconColor: iconColor,
+            hint: 'Reyes',
+            textCapitalization: TextCapitalization.words,
+            prefixIcon:
+                Icon(Icons.person_outline_rounded, size: 18, color: iconColor),
+            validator: Validators.middleName,
+          ),
+          const SizedBox(height: 14),
           GestureDetector(
             onTap: _pickDate,
             child: AbsorbPointer(
@@ -159,43 +191,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 fillColor: fillColor,
                 borderColor: borderCol,
                 textColor: bodyColor,
+                iconColor: iconColor,
                 hint: 'YYYY-MM-DD',
-                prefixIcon: Icon(Icons.cake_outlined,
-                    size: 18,
-                    color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Birthday is required' : null,
+                prefixIcon:
+                    Icon(Icons.cake_outlined, size: 18, color: iconColor),
+                suffixIcon: Icon(Icons.calendar_today_outlined,
+                    size: 16, color: iconColor),
+                validator: Validators.birthday,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _Field(
-            label: 'Email',
+            label: 'Email Address',
             ctrl: _emailCtrl,
             hint: 'you@example.com',
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
+            iconColor: iconColor,
             keyboardType: TextInputType.emailAddress,
-            prefixIcon: Icon(Icons.email_outlined,
-                size: 18,
-                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
+            prefixIcon: Icon(Icons.email_outlined, size: 18, color: iconColor),
             validator: Validators.email,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _Field(
-            label: 'Phone (optional)',
+            label: 'Phone Number (optional)',
             ctrl: _phoneCtrl,
             hint: '09XXXXXXXXX',
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
+            iconColor: iconColor,
             keyboardType: TextInputType.phone,
-            prefixIcon: Icon(Icons.phone_outlined,
-                size: 18,
-                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
+            prefixIcon: Icon(Icons.phone_outlined, size: 18, color: iconColor),
+            validator: Validators.optionalPhone,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _Field(
             label: 'Password',
             ctrl: _passCtrl,
@@ -203,64 +235,77 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
+            iconColor: iconColor,
             obscureText: _obscurePass,
-            prefixIcon: Icon(Icons.lock_outline,
-                size: 18,
-                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
+            prefixIcon: Icon(Icons.lock_outline, size: 18, color: iconColor),
             suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePass
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 18,
-                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                transitionBuilder: (c, a) =>
+                    ScaleTransition(scale: a, child: c),
+                child: Icon(
+                  _obscurePass
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  key: ValueKey(_obscurePass),
+                  size: 18,
+                  color: iconColor,
+                ),
               ),
               onPressed: () => setState(() => _obscurePass = !_obscurePass),
+              splashRadius: 18,
             ),
             validator: Validators.password,
+            helperText: 'Use at least 8 characters',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _Field(
             label: 'Confirm Password',
             ctrl: _confirmCtrl,
-            hint: '••••••••',
+            hint: 'Re-enter your password',
             fillColor: fillColor,
             borderColor: borderCol,
             textColor: bodyColor,
+            iconColor: iconColor,
             obscureText: _obscureConfirm,
-            prefixIcon: Icon(Icons.lock_outline,
-                size: 18,
-                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
+            prefixIcon: Icon(Icons.lock_outline, size: 18, color: iconColor),
             suffixIcon: IconButton(
-              icon: Icon(
-                _obscureConfirm
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 18,
-                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                transitionBuilder: (c, a) =>
+                    ScaleTransition(scale: a, child: c),
+                child: Icon(
+                  _obscureConfirm
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  key: ValueKey(_obscureConfirm),
+                  size: 18,
+                  color: iconColor,
+                ),
               ),
               onPressed: () =>
                   setState(() => _obscureConfirm = !_obscureConfirm),
+              splashRadius: 18,
             ),
             validator: (v) => Validators.confirmPassword(v, _passCtrl.text),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           GestureDetector(
             onTap: () => setState(() => _termsAccepted = !_termsAccepted),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 20,
-                  height: 20,
+                  width: 22,
+                  height: 22,
                   child: Checkbox(
                     value: _termsAccepted,
                     onChanged: (v) =>
                         setState(() => _termsAccepted = v ?? false),
                     activeColor: AppColors.accent,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4)),
-                    side: BorderSide(color: borderCol),
+                        borderRadius: BorderRadius.circular(5)),
+                    side: BorderSide(color: borderCol, width: 1.5),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -268,7 +313,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Wrap(
                     children: [
                       Text('I agree to the ',
-                          style: TextStyle(fontSize: 13, color: bodyColor)),
+                          style: TextStyle(
+                              fontSize: 13, color: bodyColor, height: 1.5)),
                       GestureDetector(
                         onTap: () => context.push(RouteConstants.terms),
                         child: const Text('Terms & Conditions',
@@ -276,10 +322,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 fontSize: 13,
                                 color: AppColors.accent,
                                 fontWeight: FontWeight.w600,
-                                decoration: TextDecoration.underline)),
+                                decoration: TextDecoration.underline,
+                                height: 1.5)),
                       ),
                       Text(' and ',
-                          style: TextStyle(fontSize: 13, color: bodyColor)),
+                          style: TextStyle(
+                              fontSize: 13, color: bodyColor, height: 1.5)),
                       GestureDetector(
                         onTap: () => context.push(RouteConstants.terms),
                         child: const Text('Privacy Policy',
@@ -287,7 +335,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 fontSize: 13,
                                 color: AppColors.accent,
                                 fontWeight: FontWeight.w600,
-                                decoration: TextDecoration.underline)),
+                                decoration: TextDecoration.underline,
+                                height: 1.5)),
                       ),
                     ],
                   ),
@@ -295,9 +344,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
           SizedBox(
-            height: 50,
+            height: 52,
             child: AppButton.gradient(
               label: 'Create Account',
               isLoading: isLoading,
@@ -306,7 +355,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               onPressed: _submit,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -329,7 +378,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (isMobile) {
       return Scaffold(
         backgroundColor:
-            isDark ? const Color(0xFF0F1117) : const Color(0xFFF3F4F6),
+            isDark ? const Color(0xFF0F1117) : const Color(0xFFF6F7FB),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -342,9 +391,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   decoration: BoxDecoration(
                     color: cardBg,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                        color:
-                            isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+                    border: Border.all(color: borderCol),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black
@@ -365,6 +412,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F7FB),
       body: Row(
         children: [
           Expanded(
@@ -373,7 +421,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF4DD0C4), Color(0xFF00897B)],
+                  colors: [Color(0xFF5B4FE9), Color(0xFF3D33C5)],
                 ),
               ),
               child: Padding(
@@ -384,12 +432,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     const LogoWidget(size: 52, showName: true, darkText: false),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(28),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.07),
+                        color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12)),
+                            color: Colors.white.withValues(alpha: 0.14)),
                       ),
                       child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,8 +447,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   color: Colors.white,
                                   fontSize: 36,
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.6)),
-                          SizedBox(height: 12),
+                                  letterSpacing: -0.6,
+                                  height: 1.15)),
+                          SizedBox(height: 14),
                           Text(
                               'Access fast, transparent loans\nwith a 20% flat interest rate.',
                               style: TextStyle(
@@ -418,7 +467,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           Container(
             width: 520,
-            color: isDark ? const Color(0xFF111827) : const Color(0xFFF3F4F6),
+            color: isDark ? const Color(0xFF111827) : const Color(0xFFF6F7FB),
             child: Center(
               child: SingleChildScrollView(
                 padding:
@@ -459,12 +508,14 @@ class _Field extends StatelessWidget {
   final Color fillColor;
   final Color borderColor;
   final Color textColor;
+  final Color iconColor;
   final TextInputType keyboardType;
   final bool obscureText;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final FormFieldValidator<String>? validator;
   final TextCapitalization textCapitalization;
+  final String? helperText;
 
   const _Field({
     required this.label,
@@ -472,6 +523,7 @@ class _Field extends StatelessWidget {
     required this.fillColor,
     required this.borderColor,
     required this.textColor,
+    required this.iconColor,
     this.hint,
     this.keyboardType = TextInputType.text,
     this.obscureText = false,
@@ -479,11 +531,13 @@ class _Field extends StatelessWidget {
     this.suffixIcon,
     this.validator,
     this.textCapitalization = TextCapitalization.none,
+    this.helperText,
   });
 
   @override
   Widget build(BuildContext context) {
-    const labelColor = Color(0xFF374151);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? Colors.white70 : const Color(0xFF374151);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -491,50 +545,65 @@ class _Field extends StatelessWidget {
             style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: context.isDark ? Colors.white70 : labelColor)),
-        const SizedBox(height: 6),
+                color: labelColor,
+                letterSpacing: 0.1,
+                height: 1.2)),
+        const SizedBox(height: 7),
         TextFormField(
           controller: ctrl,
           keyboardType: keyboardType,
           obscureText: obscureText,
           maxLines: 1,
           textCapitalization: textCapitalization,
-          style: TextStyle(color: textColor, fontSize: 15),
+          style: TextStyle(color: textColor, fontSize: 15, height: 1.4),
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-                color:
-                    context.isDark ? Colors.white24 : const Color(0xFF9CA3AF),
+                color: isDark ? Colors.white24 : const Color(0xFF9CA3AF),
                 fontSize: 14),
             filled: true,
             fillColor: fillColor,
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(color: borderColor),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(color: borderColor),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.accent, width: 1.6),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: AppColors.error),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.6),
             ),
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            errorStyle: const TextStyle(
+              color: AppColors.error,
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
         ),
+        if (helperText != null) ...[
+          const SizedBox(height: 6),
+          Text(helperText!,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+                height: 1.4,
+              )),
+        ],
       ],
     );
   }

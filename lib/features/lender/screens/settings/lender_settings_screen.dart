@@ -6,6 +6,10 @@
 //  - Fixed "BOTTOM OVERFLOWED" in collapsible sections: replaced
 //    AnimatedCrossFade with ClipRect + AnimatedSize for stable height transitions.
 //  - Adjusted bottom padding to account for MobileShell nav bar offset.
+//
+// REDESIGN (Task 7-A): Material 3 polish, per-section Form state with
+// Validators on all fields (firstName/lastName/phone/address/password),
+// consistent 14px radius, AppIcons for visual consistency, premium profile card.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,11 +20,11 @@ import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/utils/extensions.dart';
+import '../../../../shared/utils/validators.dart';
 import '../../../../shared/widgets/app_avatar.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/glass_card.dart';
-import '../../../auth/data/auth_repository.dart';
 
 class LenderSettingsScreen extends ConsumerStatefulWidget {
   const LenderSettingsScreen({super.key});
@@ -39,7 +43,11 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
   final _newPassCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
 
+  final _profileFormKey = GlobalKey<FormState>();
+  final _securityFormKey = GlobalKey<FormState>();
+
   bool _saving = false;
+  bool _savingPass = false;
   bool _notifLoan = true;
   bool _notifPayment = true;
   bool _notifPromo = false;
@@ -71,6 +79,10 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
   }
 
   Future<void> _save() async {
+    if (!(_profileFormKey.currentState?.validate() ?? false)) {
+      context.showSnack('Please fix the errors before saving', isError: true);
+      return;
+    }
     setState(() => _saving = true);
     final err = await ref.read(authRepositoryProvider).updateProfile({
       'first_name': _firstCtrl.text.trim(),
@@ -86,19 +98,15 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
   }
 
   Future<void> _changePass() async {
-    if (_newPassCtrl.text != _confirmCtrl.text) {
-      context.showSnack('Passwords do not match', isError: true);
+    if (!(_securityFormKey.currentState?.validate() ?? false)) {
+      context.showSnack('Please fix the password fields', isError: true);
       return;
     }
-    if (_newPassCtrl.text.length < 8) {
-      context.showSnack('At least 8 characters required', isError: true);
-      return;
-    }
-    setState(() => _saving = true);
+    setState(() => _savingPass = true);
     final err = await ref
         .read(authProvider.notifier)
         .changePassword(_oldPassCtrl.text, _newPassCtrl.text);
-    setState(() => _saving = false);
+    setState(() => _savingPass = false);
     if (mounted) {
       context.showSnack(err ?? 'Password changed', isError: err != null);
       if (err == null) {
@@ -181,60 +189,69 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
               accent: accent,
               onToggle: () =>
                   setState(() => _editProfileExpanded = !_editProfileExpanded),
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          label: 'First Name',
-                          controller: _firstCtrl,
-                          isGlass: true,
-                          textCapitalization: TextCapitalization.words,
-                          validator: (v) =>
-                              v == null || v.isEmpty ? 'Required' : null,
+              child: Form(
+                key: _profileFormKey,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppTextField(
+                            label: 'First Name',
+                            controller: _firstCtrl,
+                            isGlass: true,
+                            textCapitalization: TextCapitalization.words,
+                            validator: Validators.firstName,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: AppTextField(
-                          label: 'Last Name',
-                          controller: _lastCtrl,
-                          isGlass: true,
-                          textCapitalization: TextCapitalization.words,
-                          validator: (v) =>
-                              v == null || v.isEmpty ? 'Required' : null,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: AppTextField(
+                            label: 'Last Name',
+                            controller: _lastCtrl,
+                            isGlass: true,
+                            textCapitalization: TextCapitalization.words,
+                            validator: Validators.lastName,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'Phone Number',
-                    controller: _phoneCtrl,
-                    isGlass: true,
-                    keyboardType: TextInputType.phone,
-                    hint: '09XXXXXXXXX',
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'Address',
-                    controller: _addressCtrl,
-                    isGlass: true,
-                    hint: 'Street, City, Province',
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 16),
-                  AppButton(
-                    label: 'Save Changes',
-                    color: accent,
-                    textColor: Colors.white,
-                    isLoading: _saving,
-                    onPressed: _save,
-                    width: double.infinity,
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      label: 'Phone Number',
+                      controller: _phoneCtrl,
+                      isGlass: true,
+                      keyboardType: TextInputType.phone,
+                      hint: '09XXXXXXXXX',
+                      prefixIcon: const Icon(AppIcons.phone,
+                          size: 18, color: Colors.white54),
+                      validator: Validators.phone,
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      label: 'Address',
+                      controller: _addressCtrl,
+                      isGlass: true,
+                      hint: 'Street, City, Province',
+                      maxLines: 2,
+                      prefixIcon: const Icon(AppIcons.mapPin,
+                          size: 18, color: Colors.white54),
+                      validator: Validators.address,
+                    ),
+                    const SizedBox(height: 16),
+                    AppButton.gradient(
+                      label: 'Save Changes',
+                      icon: AppIcons.check,
+                      color: accent,
+                      textColor: Colors.white,
+                      isLoading: _saving,
+                      onPressed: _save,
+                      width: double.infinity,
+                      size: AppButtonSize.lg,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -247,45 +264,53 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
               accent: accent,
               onToggle: () =>
                   setState(() => _securityExpanded = !_securityExpanded),
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    label: 'Current Password',
-                    controller: _oldPassCtrl,
-                    isGlass: true,
-                    obscureText: true,
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'New Password',
-                    controller: _newPassCtrl,
-                    isGlass: true,
-                    obscureText: true,
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'Confirm New Password',
-                    controller: _confirmCtrl,
-                    isGlass: true,
-                    obscureText: true,
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  AppButton(
-                    label: 'Change Password',
-                    color: accent,
-                    textColor: Colors.white,
-                    isLoading: _saving,
-                    onPressed: _changePass,
-                    width: double.infinity,
-                  ),
-                ],
+              child: Form(
+                key: _securityFormKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      label: 'Current Password',
+                      controller: _oldPassCtrl,
+                      isGlass: true,
+                      obscureText: true,
+                      validator: (v) => Validators.compose(v, [
+                        (v) =>
+                            Validators.required(v, label: 'Current password'),
+                      ]),
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      label: 'New Password',
+                      controller: _newPassCtrl,
+                      isGlass: true,
+                      obscureText: true,
+                      helperText: 'Minimum 8 characters, 1 letter + 1 number',
+                      validator: Validators.strongPassword,
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      label: 'Confirm New Password',
+                      controller: _confirmCtrl,
+                      isGlass: true,
+                      obscureText: true,
+                      validator: (v) =>
+                          Validators.confirmPassword(v, _newPassCtrl.text),
+                    ),
+                    const SizedBox(height: 16),
+                    AppButton.gradient(
+                      label: 'Change Password',
+                      icon: AppIcons.key,
+                      color: accent,
+                      textColor: Colors.white,
+                      isLoading: _savingPass,
+                      onPressed: _changePass,
+                      width: double.infinity,
+                      size: AppButtonSize.lg,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -379,7 +404,7 @@ class _LenderSettingsScreenState extends ConsumerState<LenderSettingsScreen> {
                   ),
                   _LGlassDivider(),
                   _LGlassTapTile(
-                    icon: Icons.info_outline_rounded,
+                    icon: AppIcons.info,
                     label: 'App Version',
                     trailing: Text('v1.0.0',
                         style: TextStyle(
@@ -483,7 +508,7 @@ class _LGlassCollapsibleSection extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(icon, color: accent, size: 16),
                   ),
@@ -497,7 +522,8 @@ class _LGlassCollapsibleSection extends StatelessWidget {
                   ),
                   AnimatedRotation(
                     turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
                     child: Icon(Icons.keyboard_arrow_down_rounded,
                         color: Colors.white.withValues(alpha: 0.5), size: 22),
                   ),
@@ -509,8 +535,8 @@ class _LGlassCollapsibleSection extends StatelessWidget {
           // from AnimatedCrossFade in scrollable containers.
           ClipRect(
             child: AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOut,
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOut,
               child: expanded
                   ? Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -603,7 +629,7 @@ class _LGlassSwitchTile extends StatelessWidget {
             value: value,
             onChanged: onChanged,
             activeTrackColor: accent,
-            activeThumbColor: Colors.white,
+            thumbColor: WidgetStateProperty.all(Colors.white),
           ),
         ],
       ),

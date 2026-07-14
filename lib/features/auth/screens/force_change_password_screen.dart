@@ -1,19 +1,13 @@
 // lib/features/auth/screens/force_change_password_screen.dart
 //
-// FIX #9:
-//  - Replaced deprecated .withOpacity() with .withValues(alpha:) throughout.
-//  - The router already redirects any authenticated user with
-//    forcePasswordChange == true to this screen. No changes needed in the router.
-//  - After successful changePassword(), _loadProfile() reloads the user profile
-//    from the backend. The backend clears force_password_change = false on the
-//    users table via the auth-profile/change-password Edge Function.
-//  - The router then automatically redirects to the user's home screen because
-//    needsForceChange becomes false.
-//  - Default temporary password is shown as a hint so the user knows it is 12345678.
+// Premium Material 3 redesign — force change password screen.
+// NO business logic changes; same authProvider.changePassword() call.
+// Form fields use Validators.password and Validators.confirmPassword.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/utils/validators.dart';
@@ -55,8 +49,6 @@ class _ForceChangePasswordScreenState
       context.showSnack(err, isError: true);
     } else {
       context.showSnack('Password changed successfully! Redirecting...');
-      // Router listener on authProvider will redirect automatically once
-      // forcePasswordChange becomes false after profile reload.
     }
   }
 
@@ -71,56 +63,90 @@ class _ForceChangePasswordScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.lock_reset_outlined,
-            size: 48,
-            color: AppColors.warning,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Change Your Password',
-            style: isGlass
-                ? const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700)
-                : Theme.of(context).textTheme.displaySmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Your account requires a password change before you can continue.',
-            style: isGlass
-                ? TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6), fontSize: 14)
-                : Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 12),
-          // FIX #9: Show the default temp password as a hint
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.warning.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(16),
               border:
-                  Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
+                  Border.all(color: AppColors.warning.withValues(alpha: 0.32)),
             ),
-            child: Row(children: [
-              const Icon(Icons.info_outline_rounded,
-                  color: AppColors.warning, size: 16),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Default temporary password: 12345678',
-                  style: TextStyle(
-                      color: isGlass
-                          ? Colors.white.withValues(alpha: 0.85)
-                          : Colors.black87,
-                      fontSize: 13),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.lock_reset_outlined,
+                    color: AppColors.warning,
+                    size: 22,
+                  ),
                 ),
-              ),
-            ]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Change Your Password',
+                        style: GoogleFonts.spaceGrotesk(
+                          color:
+                              isGlass ? Colors.white : const Color(0xFF0F1117),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Required before you can continue.',
+                        style: TextStyle(
+                          color: isGlass
+                              ? Colors.white.withValues(alpha: 0.65)
+                              : const Color(0xFF6B7280),
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          // Info banner — default temp password
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: AppColors.info.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    color: AppColors.info, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Default temporary password: 12345678',
+                    style: TextStyle(
+                        color: isGlass
+                            ? Colors.white.withValues(alpha: 0.85)
+                            : const Color(0xFF374151),
+                        fontSize: 13,
+                        height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           AppTextField(
             label: 'Current Password',
             hint: '12345678 (or your current password)',
@@ -129,8 +155,7 @@ class _ForceChangePasswordScreenState
             obscureText: true,
             prefixIcon: Icon(Icons.lock_outline,
                 size: 18, color: isGlass ? Colors.white54 : null),
-            validator: (v) =>
-                v == null || v.isEmpty ? 'Current password is required' : null,
+            validator: (v) => Validators.required(v, label: 'Current password'),
           ),
           const SizedBox(height: 16),
           AppTextField(
@@ -147,11 +172,12 @@ class _ForceChangePasswordScreenState
               if (v == '12345678') return 'Choose a different password';
               return null;
             },
+            helperText: 'Use at least 8 characters; cannot be 12345678',
           ),
           const SizedBox(height: 16),
           AppTextField(
             label: 'Confirm New Password',
-            hint: '••••••••',
+            hint: 'Re-enter your new password',
             controller: _confirmCtrl,
             isGlass: isGlass,
             obscureText: true,
@@ -160,12 +186,15 @@ class _ForceChangePasswordScreenState
             validator: (v) => Validators.confirmPassword(v, _newCtrl.text),
           ),
           const SizedBox(height: 28),
-          AppButton(
-            label: 'Change Password',
-            isLoading: isLoading,
-            width: double.infinity,
-            onPressed: _submit,
-            fontSize: 15,
+          SizedBox(
+            height: 52,
+            child: AppButton(
+              label: 'Change Password',
+              isLoading: isLoading,
+              width: double.infinity,
+              size: AppButtonSize.lg,
+              onPressed: _submit,
+            ),
           ),
           const SizedBox(height: 12),
           TextButton(
@@ -175,6 +204,7 @@ class _ForceChangePasswordScreenState
               style: TextStyle(
                 color: isGlass ? Colors.white60 : AppColors.error,
                 fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -184,12 +214,28 @@ class _ForceChangePasswordScreenState
 
     if (!isGlass) {
       return Scaffold(
+        backgroundColor: const Color(0xFFF6F7FB),
         body: Center(
           child: SizedBox(
-            width: 440,
+            width: 480,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(48),
-              child: form,
+              child: Container(
+                padding: const EdgeInsets.all(36),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 32,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: form,
+              ),
             ),
           ),
         ),
@@ -215,14 +261,14 @@ class _ForceChangePasswordScreenState
                 ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                     child: Container(
                       padding: const EdgeInsets.all(28),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15)),
+                            color: Colors.white.withValues(alpha: 0.16)),
                       ),
                       child: form,
                     ),
